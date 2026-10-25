@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="folio-version" content="2026.10.25.3" />
+    <meta name="folio-version" content="2026.10.25.4" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta
       name="description"
       content="在浏览器中预览任意尺寸书籍的封面、内页与翻页效果。"
     />
-    <title>Folio — 书本翻页预览 · 2026.10.25.3</title>
+    <title>Folio — 书本翻页预览 · 2026.10.25.4</title>
     <style>
 :root {
   color-scheme: light;
@@ -3608,7 +3608,7 @@ kbd {
         <div class="document-title">
           <span class="status-dot"></span>
           <span id="documentName">未命名画册</span>
-          <span class="saved-label">版本 2026.10.25.3</span>
+          <span class="saved-label">版本 2026.10.25.4</span>
         </div>
 
         <div class="top-actions">
@@ -4288,23 +4288,31 @@ const state = {
 const imageCache = new Map();
 let modelCanvasRedrawTimer = null;
 
-async function createThumbnailUrl(file, fallbackUrl) {
+async function createImageVariants(file, fallbackUrl) {
   try {
     const bitmap = await createImageBitmap(file);
-    const maxSize = 320;
-    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-    const context = canvas.getContext("2d");
-    context.fillStyle = "#fbfaf7";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const makeVariant = async (maxSize, quality) => {
+      const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      context.imageSmoothingEnabled = true;
+      context.imageSmoothingQuality = "high";
+      context.fillStyle = "#fbfaf7";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+      return blob ? URL.createObjectURL(blob) : fallbackUrl;
+    };
+    const [thumbUrl, overviewUrl] = await Promise.all([
+      makeVariant(320, 0.82),
+      makeVariant(1400, 0.92),
+    ]);
     bitmap.close?.();
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
-    return blob ? URL.createObjectURL(blob) : fallbackUrl;
+    return { thumbUrl, overviewUrl };
   } catch {
-    return fallbackUrl;
+    return { thumbUrl: fallbackUrl, overviewUrl: fallbackUrl };
   }
 }
 
@@ -4313,6 +4321,9 @@ function revokeImageObject(image) {
   URL.revokeObjectURL(image.url);
   imageCache.delete(image.url);
   if (image.thumbUrl && image.thumbUrl !== image.url) URL.revokeObjectURL(image.thumbUrl);
+  if (image.overviewUrl && image.overviewUrl !== image.url) {
+    URL.revokeObjectURL(image.overviewUrl);
+  }
 }
 
 const presetSizes = {
@@ -5521,7 +5532,7 @@ function renderOverview() {
                         : artPageMarkup(page);
               return `<div class="overview-page" style="--page-ratio:${ratio}">${
                 image
-                  ? `<img src="${image.thumbUrl ?? image.url}" alt="第 ${page + 1} 页" loading="lazy" decoding="async" style="object-position:${objectPosition}" />`
+                  ? `<img src="${image.overviewUrl ?? image.thumbUrl ?? image.url}" alt="第 ${page + 1} 页" loading="lazy" decoding="async" style="object-position:${objectPosition}" />`
                   : fallback
               }</div>`;
             })
@@ -5864,11 +5875,12 @@ async function setCoverImage(kind, file) {
     revokeImageObject(current);
   }
   const url = URL.createObjectURL(file);
+  const variants = await createImageVariants(file, url);
   const image = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     name: file.name,
     url,
-    thumbUrl: await createThumbnailUrl(file, url),
+    ...variants,
   };
   if (isBack) state.backCoverImage = image;
   else state.coverImage = image;
@@ -5925,11 +5937,12 @@ async function setWrapCoverImage(file) {
     revokeImageObject(state.wrapCoverImage);
   }
   const url = URL.createObjectURL(file);
+  const variants = await createImageVariants(file, url);
   state.wrapCoverImage = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     name: file.name,
     url,
-    thumbUrl: await createThumbnailUrl(file, url),
+    ...variants,
   };
   syncPageSlots();
   state.modelRotation = { x: -8, y: -17 };
@@ -5943,15 +5956,18 @@ async function setWrapCoverImage(file) {
   showToast("封面封底展开图已自动分配到封面与封底");
 }
 
-function setPanoramaImage(file) {
+async function setPanoramaImage(file) {
   if (!file?.type.startsWith("image/")) {
     showToast("请选择有效的 JPG、PNG 或 WEBP 图片");
     return;
   }
+  const url = URL.createObjectURL(file);
+  const variants = await createImageVariants(file, url);
   const image = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     name: file.name,
-    url: URL.createObjectURL(file),
+    url,
+    ...variants,
   };
   const item = { id: image.id, type: "panorama", image };
   state.interiorItems.push(item);
@@ -5981,11 +5997,12 @@ async function addImages(files) {
     for (let index = 0; index < imageFiles.length; index += 1) {
       const file = imageFiles[index];
       const url = URL.createObjectURL(file);
+      const variants = await createImageVariants(file, url);
       const image = {
         id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
         name: file.name,
         url,
-        thumbUrl: await createThumbnailUrl(file, url),
+        ...variants,
       };
       state.images.push(image);
       state.interiorItems.push({ id: image.id, type: "page", image });
