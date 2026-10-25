@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="folio-version" content="2026.10.25.4" />
+    <meta name="folio-version" content="2026.10.25.5" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta
       name="description"
       content="在浏览器中预览任意尺寸书籍的封面、内页与翻页效果。"
     />
-    <title>Folio — 书本翻页预览 · 2026.10.25.4</title>
+    <title>Folio — 书本翻页预览 · 2026.10.25.5</title>
     <style>
 :root {
   color-scheme: light;
@@ -1112,6 +1112,7 @@ h2 {
 
 .panorama-layer::after {
   position: absolute;
+  z-index: 3;
   top: 0;
   bottom: 0;
   left: 50%;
@@ -1126,6 +1127,20 @@ h2 {
   );
   content: "";
   transform: translateX(-50%);
+}
+
+.panorama-reference-layer {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  pointer-events: none;
+}
+
+.panorama-reference-page {
+  position: relative;
+  width: 50%;
+  height: 100%;
 }
 
 .model-panorama-layer {
@@ -3608,7 +3623,7 @@ kbd {
         <div class="document-title">
           <span class="status-dot"></span>
           <span id="documentName">未命名画册</span>
-          <span class="saved-label">版本 2026.10.25.4</span>
+          <span class="saved-label">版本 2026.10.25.5</span>
         </div>
 
         <div class="top-actions">
@@ -4773,6 +4788,21 @@ function pureBlankPageMarkup() {
   return '<div class="page-fallback pure-blank-page"></div>';
 }
 
+function referenceGuideMarkup() {
+  const margin = state.marginValues;
+  const marginStyle = `top:${(margin.top / state.height) * 100}%;right:${
+    (margin.right / state.width) * 100
+  }%;bottom:${(margin.bottom / state.height) * 100}%;left:${(margin.left / state.width) * 100}%`;
+  const bleedStyle = `top:${(state.bleed / state.height) * 100}%;right:${
+    (state.bleed / state.width) * 100
+  }%;bottom:${(state.bleed / state.height) * 100}%;left:${(state.bleed / state.width) * 100}%`;
+  return `
+    <div class="page-margins" style="${marginStyle}" aria-hidden="true"></div>
+    <div class="bleed-guide" style="${bleedStyle}" aria-hidden="true"></div>
+    <div class="guide-corners" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  `;
+}
+
 function pageContent(index, options = {}) {
   const {
     includeNumber = true,
@@ -4811,19 +4841,9 @@ function pageContent(index, options = {}) {
     content = artPageMarkup(index);
   }
 
-  const margin = state.marginValues;
-  const marginStyle = `top:${(margin.top / state.height) * 100}%;right:${
-    (margin.right / state.width) * 100
-  }%;bottom:${(margin.bottom / state.height) * 100}%;left:${(margin.left / state.width) * 100}%`;
-  const bleedStyle = `top:${(state.bleed / state.height) * 100}%;right:${
-    (state.bleed / state.width) * 100
-  }%;bottom:${(state.bleed / state.height) * 100}%;left:${(state.bleed / state.width) * 100}%`;
-
   return `
     ${content}
-    <div class="page-margins" style="${marginStyle}" aria-hidden="true"></div>
-    <div class="bleed-guide" style="${bleedStyle}" aria-hidden="true"></div>
-    <div class="guide-corners" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    ${referenceGuideMarkup()}
     ${includeNumber && pageKind === "inner-page" ? `<span class="page-number">${String(page.innerNumber).padStart(2, "0")}</span>` : ""}
   `;
 }
@@ -4999,9 +5019,15 @@ function renderPanoramaLayer(layer, spreadIndex) {
     return;
   }
   layer.hidden = false;
-  layer.innerHTML = `<canvas class="hd-page-canvas" data-src="${escapeHtml(
-    panorama.url
-  )}" aria-label="跨页大图预览"></canvas>`;
+  layer.innerHTML = `
+    <canvas class="hd-page-canvas" data-src="${escapeHtml(
+      panorama.url
+    )}" aria-label="跨页大图预览"></canvas>
+    <div class="panorama-reference-layer" aria-hidden="true">
+      <div class="panorama-reference-page">${referenceGuideMarkup()}</div>
+      <div class="panorama-reference-page">${referenceGuideMarkup()}</div>
+    </div>
+  `;
   scheduleHighResolutionDraw(layer);
 }
 
@@ -5625,6 +5651,7 @@ function enterPresentation() {
         presentationPair.left !== null ? pageContent(presentationPair.left) : ""
       }</div>
       <div class="book-page book-page-right">${pageContent(presentationPair.right ?? 0)}</div>
+      <div class="panorama-layer" id="presentationPanoramaLayer" hidden></div>
       <div class="book-spine" aria-hidden="true"></div>
       <div class="edge edge-top"></div>
       <div class="edge edge-bottom"></div>
@@ -5632,6 +5659,7 @@ function enterPresentation() {
   `;
   const book = els.presentationStage.querySelector(".book");
   book?.classList.add("presentation-book");
+  renderPanoramaLayer($("#presentationPanoramaLayer", book), state.currentSpread);
   applyPresentationBookSize(book);
   updatePresentation();
 }
@@ -5647,6 +5675,7 @@ function updatePresentationContent() {
   book.classList.toggle("is-right-only", pair.left === null && pair.right !== null);
   $(".book-page-left", book).innerHTML = pair.left !== null ? pageContent(pair.left) : "";
   $(".book-page-right", book).innerHTML = pageContent(pair.right ?? 0);
+  renderPanoramaLayer($("#presentationPanoramaLayer", book), state.currentSpread);
   applyPresentationBookSize(book);
   updatePresentation();
 }
