@@ -3,13 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="folio-version" content="2026.10.25.2" />
+    <meta name="folio-version" content="2026.10.25.3" />
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta
       name="description"
       content="在浏览器中预览任意尺寸书籍的封面、内页与翻页效果。"
     />
-    <title>Folio — 书本翻页预览 · 2026.10.25.2</title>
+    <title>Folio — 书本翻页预览 · 2026.10.25.3</title>
     <style>
 :root {
   color-scheme: light;
@@ -380,6 +380,8 @@ h2 {
   background: transparent;
   text-align: left;
   cursor: pointer;
+  content-visibility: auto;
+  contain-intrinsic-size: 64px;
 }
 
 .page-thumb:hover {
@@ -2562,6 +2564,8 @@ h2 {
 
 .overview-spread {
   cursor: pointer;
+  content-visibility: auto;
+  contain-intrinsic-size: 260px;
 }
 
 .overview-spread:hover .overview-paper {
@@ -3604,7 +3608,7 @@ kbd {
         <div class="document-title">
           <span class="status-dot"></span>
           <span id="documentName">未命名画册</span>
-          <span class="saved-label">版本 2026.10.25.2</span>
+          <span class="saved-label">版本 2026.10.25.3</span>
         </div>
 
         <div class="top-actions">
@@ -4271,6 +4275,9 @@ const state = {
   binding: "left",
   quality: "high",
   view: "flip",
+  flipDirty: true,
+  modelDirty: true,
+  overviewDirty: true,
   isFlipping: false,
   presentation: false,
   draggedImageIndex: null,
@@ -4280,6 +4287,33 @@ const state = {
 
 const imageCache = new Map();
 let modelCanvasRedrawTimer = null;
+
+async function createThumbnailUrl(file, fallbackUrl) {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxSize = 320;
+    const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#fbfaf7";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/webp", 0.82));
+    return blob ? URL.createObjectURL(blob) : fallbackUrl;
+  } catch {
+    return fallbackUrl;
+  }
+}
+
+function revokeImageObject(image) {
+  if (!image) return;
+  URL.revokeObjectURL(image.url);
+  imageCache.delete(image.url);
+  if (image.thumbUrl && image.thumbUrl !== image.url) URL.revokeObjectURL(image.thumbUrl);
+}
 
 const presetSizes = {
   a4: { width: 210, height: 297 },
@@ -4811,11 +4845,11 @@ function drawHighResolutionCanvases(root) {
     const multiplier = isModelCanvas
       ? clamp(state.modelZoom * deviceScale * perspectiveScale, 0.75, 4)
       : state.quality === "halftone"
-        ? 5
+        ? 4
         : state.quality === "high"
-          ? 4
-          : 2.5;
-    const maxDimension = 3800;
+          ? 2.5
+          : 1.5;
+    const maxDimension = 3000;
     const scale = Math.min(multiplier, maxDimension / Math.max(cssWidth, cssHeight));
     canvas.width = Math.max(1, Math.round(cssWidth * scale));
     canvas.height = Math.max(1, Math.round(cssHeight * scale));
@@ -4960,7 +4994,12 @@ function renderPanoramaLayer(layer, spreadIndex) {
   scheduleHighResolutionDraw(layer);
 }
 
-function renderBook(animate = false, direction = "next") {
+function renderBook(animate = false, direction = "next", force = false) {
+  if (els.flipView.hidden && !force) {
+    state.flipDirty = true;
+    return;
+  }
+  state.flipDirty = false;
   if (state.isFlipping) return;
   const pair = pagesForSpread(state.currentSpread);
   const orderedPair = visualPair(pair);
@@ -5099,7 +5138,12 @@ function updateModelTransform() {
   scheduleModelCanvasRedraw();
 }
 
-function renderModel(animate = false, direction = "next") {
+function renderModel(animate = false, direction = "next", force = false) {
+  if (els.modelView.hidden && !force) {
+    state.modelDirty = true;
+    return;
+  }
+  state.modelDirty = false;
   const pair = pagesForSpread(state.currentSpread);
   const orderedPair = visualPair(pair);
   const currentSpread = state.layoutSpreads[state.currentSpread];
@@ -5242,7 +5286,7 @@ function goToSpread(index, options = {}) {
     renderBook(animate && state.spreadMode, direction);
     renderModel(false);
   }
-  renderPageList();
+  updatePageListActive();
   updateBookDecorations();
   updatePresentation();
 }
@@ -5265,10 +5309,10 @@ function buildPageList() {
   const coverPosition = frontPage?.crop === "right" ? "right center" : "center center";
   const backPosition = backPage?.crop === "left" ? "left center" : "center center";
   const coverThumbMarkup = coverImage
-    ? `<img src="${coverImage.url}" alt="" style="object-position:${coverPosition}" />`
+    ? `<img src="${coverImage.thumbUrl ?? coverImage.url}" alt="" loading="lazy" decoding="async" style="object-position:${coverPosition}" />`
     : '<div class="page-fallback cover-page" style="position:relative;width:100%;height:100%;transform:scale(.45)"></div>';
   const backThumbMarkup = backCoverImage
-    ? `<img src="${backCoverImage.url}" alt="" style="object-position:${backPosition}" />`
+    ? `<img src="${backCoverImage.thumbUrl ?? backCoverImage.url}" alt="" loading="lazy" decoding="async" style="object-position:${backPosition}" />`
     : '<div class="page-fallback back-cover-page" style="position:relative;width:100%;height:100%"><div class="back-cover-grid"></div></div>';
 
   list.push(`
@@ -5302,7 +5346,7 @@ function buildPageList() {
         list.push(`
           <div class="page-thumb panorama-thumb ${active ? "active" : ""}" data-item-index="${itemIndex}" data-item-id="${item.id}" draggable="true" title="${escapeHtml(item.image.name)}">
             <div class="panorama-thumb-paper" aria-hidden="true">
-              <img src="${escapeHtml(item.image.url)}" alt="" />
+              <img src="${escapeHtml(item.image.thumbUrl ?? item.image.url)}" alt="" loading="lazy" decoding="async" />
               <span class="panorama-fold"></span>
             </div>
             <div class="thumb-copy">
@@ -5321,7 +5365,7 @@ function buildPageList() {
       list.push(`
         <div class="page-thumb ${active ? "active" : ""}" data-item-index="${itemIndex}" data-item-id="${item.id}" draggable="true" title="${escapeHtml(item.image.name)}">
           <div class="thumb-paper" style="height:${pageThumbHeight}px" aria-hidden="true">
-            <img src="${escapeHtml(item.image.url)}" alt="" />
+            <img src="${escapeHtml(item.image.thumbUrl ?? item.image.url)}" alt="" loading="lazy" decoding="async" />
           </div>
           <div class="thumb-copy">
             <strong>内页 ${String(location.startInner ?? "–").padStart(2, "0")}</strong>
@@ -5369,6 +5413,23 @@ function buildPageList() {
   return list.join("");
 }
 
+function updatePageListActive() {
+  $$(".page-thumb", els.pageList).forEach((item) => {
+    let active = false;
+    if (item.dataset.itemIndex !== undefined) {
+      const contentItem = state.interiorItems[Number(item.dataset.itemIndex)];
+      active = state.currentSpread === state.itemLocations[contentItem?.id]?.spreadIndex;
+    } else if (item.dataset.spreadIndex !== undefined) {
+      active = state.currentSpread === Number(item.dataset.spreadIndex);
+    } else if (item.dataset.pageKind === "cover") {
+      active = state.currentSpread === 0;
+    } else if (item.dataset.pageKind === "back") {
+      active = state.currentSpread === spreadCount() - 1;
+    }
+    item.classList.toggle("active", active);
+  });
+}
+
 function renderPageList() {
   els.pageList.innerHTML = buildPageList();
   els.pageCountBadge.textContent = `${state.pages} 页`;
@@ -5383,7 +5444,7 @@ function renderAssetStrip() {
       .map(
         (image, index) => `
           <span class="asset-thumb" title="${escapeHtml(image.name)}">
-            <img src="${escapeHtml(image.url)}" alt="素材 ${index + 1}" />
+            <img src="${escapeHtml(image.thumbUrl ?? image.url)}" alt="素材 ${index + 1}" loading="lazy" decoding="async" />
             <button class="asset-remove" type="button" data-remove-item="${image.id}" aria-label="移除${escapeHtml(
               image.name
             )}">×</button>
@@ -5398,7 +5459,7 @@ function renderAssetStrip() {
   }`;
   const previewMarkup = (image) =>
     image
-      ? `<img src="${escapeHtml(image.url)}" alt="" />`
+      ? `<img src="${escapeHtml(image.thumbUrl ?? image.url)}" alt="" loading="lazy" decoding="async" />`
       : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>';
   els.coverPreview.innerHTML = previewMarkup(state.coverImage);
   els.backCoverPreview.innerHTML = previewMarkup(state.backCoverImage);
@@ -5424,6 +5485,7 @@ function updateSpreadAssetStatus() {
 }
 
 function renderOverview() {
+  state.overviewDirty = false;
   const ratio = state.width / state.height;
   const items = [];
   for (let spread = 0; spread < spreadCount(); spread += 1) {
@@ -5459,7 +5521,7 @@ function renderOverview() {
                         : artPageMarkup(page);
               return `<div class="overview-page" style="--page-ratio:${ratio}">${
                 image
-                  ? `<img src="${image.url}" alt="第 ${page + 1} 页" style="object-position:${objectPosition}" />`
+                  ? `<img src="${image.thumbUrl ?? image.url}" alt="第 ${page + 1} 页" loading="lazy" decoding="async" style="object-position:${objectPosition}" />`
                   : fallback
               }</div>`;
             })
@@ -5475,6 +5537,11 @@ function renderOverview() {
   els.spreadGrid.innerHTML = items.join("");
 }
 
+function refreshOverview() {
+  if (state.view === "overview") renderOverview();
+  else state.overviewDirty = true;
+}
+
 function renderAll(options = {}) {
   const { preserveSpread = false } = options;
   syncPageSlots();
@@ -5483,7 +5550,7 @@ function renderAll(options = {}) {
   renderModel(false);
   renderPageList();
   renderAssetStrip();
-  renderOverview();
+  refreshOverview();
   updateBookDecorations();
   updatePresentation();
   updateRatio();
@@ -5587,11 +5654,16 @@ function setView(view) {
   els.overviewView.hidden = view !== "overview";
   els.detailLoupe.classList.remove("visible");
   if (view === "overview") renderOverview();
-  if (view === "flip") requestAnimationFrame(setBookDimensions);
+  if (view === "flip") {
+    requestAnimationFrame(() => {
+      renderBook(false, "next", true);
+      setBookDimensions();
+    });
+  }
   if (view === "model") {
     requestAnimationFrame(() => {
       setModelDimensions();
-      renderModel(false);
+      renderModel(false, "next", true);
     });
   }
   updateBookDecorations();
@@ -5624,7 +5696,7 @@ function setDimensions(width, height) {
   updateRatio();
   renderBook(false);
   renderModel(false);
-  renderOverview();
+  refreshOverview();
 }
 
 function setPreset(preset) {
@@ -5669,7 +5741,7 @@ function setBinding(binding) {
   renderBook(false);
   renderModel(false);
   renderPageList();
-  renderOverview();
+  refreshOverview();
   updateBookDecorations();
   showToast(state.binding === "right" ? "已切换为右开本" : "已切换为左开本");
 }
@@ -5781,7 +5853,7 @@ function updateLoupe(event) {
   els.detailLoupe.classList.add("visible");
 }
 
-function setCoverImage(kind, file) {
+async function setCoverImage(kind, file) {
   if (!file?.type.startsWith("image/")) {
     showToast("请选择有效的 JPG、PNG 或 WEBP 图片");
     return;
@@ -5789,13 +5861,14 @@ function setCoverImage(kind, file) {
   const isBack = kind === "back";
   const current = isBack ? state.backCoverImage : state.coverImage;
   if (current?.url) {
-    URL.revokeObjectURL(current.url);
-    imageCache.delete(current.url);
+    revokeImageObject(current);
   }
+  const url = URL.createObjectURL(file);
   const image = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     name: file.name,
-    url: URL.createObjectURL(file),
+    url,
+    thumbUrl: await createThumbnailUrl(file, url),
   };
   if (isBack) state.backCoverImage = image;
   else state.coverImage = image;
@@ -5807,7 +5880,7 @@ function setCoverImage(kind, file) {
   renderAssetStrip();
   renderBook(false);
   renderModel(false);
-  renderOverview();
+  refreshOverview();
   showToast(isBack ? "封底图片已更新" : "封面图片已更新");
 }
 
@@ -5816,8 +5889,7 @@ function removeCoverImage(kind) {
     kind === "front" ? "coverImage" : kind === "back" ? "backCoverImage" : "wrapCoverImage";
   const current = state[key];
   if (!current) return;
-  URL.revokeObjectURL(current.url);
-  imageCache.delete(current.url);
+  revokeImageObject(current);
   state[key] = null;
   syncPageSlots();
   state.modelRotation = { x: -8, y: -17 };
@@ -5827,7 +5899,7 @@ function removeCoverImage(kind) {
   renderAssetStrip();
   renderBook(false);
   renderModel(false);
-  renderOverview();
+  refreshOverview();
   const label = kind === "front" ? "封面" : kind === "back" ? "封底" : "封面封底展开图";
   showToast(`${label}已移除`);
 }
@@ -5836,8 +5908,7 @@ function removeInteriorItem(itemId) {
   const itemIndex = state.interiorItems.findIndex((item) => item.id === itemId);
   if (itemIndex < 0) return;
   const [item] = state.interiorItems.splice(itemIndex, 1);
-  URL.revokeObjectURL(item.image.url);
-  imageCache.delete(item.image.url);
+  revokeImageObject(item.image);
   state.images = state.images.filter((image) => image.id !== item.id);
   if (!state.interiorItems.length) state.pages = 12;
   syncPageSlots();
@@ -5845,19 +5916,20 @@ function removeInteriorItem(itemId) {
   showToast(item.type === "panorama" ? "跨页大图已移除" : "内页图片已移除");
 }
 
-function setWrapCoverImage(file) {
+async function setWrapCoverImage(file) {
   if (!file?.type.startsWith("image/")) {
     showToast("请选择有效的封面封底展开图");
     return;
   }
   if (state.wrapCoverImage?.url) {
-    URL.revokeObjectURL(state.wrapCoverImage.url);
-    imageCache.delete(state.wrapCoverImage.url);
+    revokeImageObject(state.wrapCoverImage);
   }
+  const url = URL.createObjectURL(file);
   state.wrapCoverImage = {
     id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
     name: file.name,
-    url: URL.createObjectURL(file),
+    url,
+    thumbUrl: await createThumbnailUrl(file, url),
   };
   syncPageSlots();
   state.modelRotation = { x: -8, y: -17 };
@@ -5867,7 +5939,7 @@ function setWrapCoverImage(file) {
   renderAssetStrip();
   renderBook(false);
   renderModel(false);
-  renderOverview();
+  refreshOverview();
   showToast("封面封底展开图已自动分配到封面与封底");
 }
 
@@ -5897,32 +5969,38 @@ function setPanoramaImage(file) {
   );
 }
 
-function addImages(files) {
+async function addImages(files) {
   const imageFiles = [...files].filter((file) => file.type.startsWith("image/"));
   if (!imageFiles.length) {
     showToast("请选择 JPG、PNG 或 WEBP 图片");
     return;
   }
-  const tasks = imageFiles.map(
-    (file) =>
-      new Promise((resolve) => {
-        const url = URL.createObjectURL(file);
-        const image = { id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, name: file.name, url };
-        state.images.push(image);
-        state.interiorItems.push({ id: image.id, type: "page", image });
-        resolve(image);
-      })
-  );
 
-  Promise.all(tasks).then(() => {
+  els.fileStatus.textContent = `正在处理 ${imageFiles.length} 张图片…`;
+  try {
+    for (let index = 0; index < imageFiles.length; index += 1) {
+      const file = imageFiles[index];
+      const url = URL.createObjectURL(file);
+      const image = {
+        id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+        name: file.name,
+        url,
+        thumbUrl: await createThumbnailUrl(file, url),
+      };
+      state.images.push(image);
+      state.interiorItems.push({ id: image.id, type: "page", image });
+      els.fileStatus.textContent = `正在处理图片 ${index + 1} / ${imageFiles.length}…`;
+    }
     syncPageSlots();
     renderPageList();
     renderAssetStrip();
     renderBook(false);
     renderModel(false);
-    renderOverview();
+    refreshOverview();
     showToast(`已添加 ${imageFiles.length} 张内页图片，共 ${state.pages} 页`);
-  });
+  } catch {
+    showToast("部分图片处理失败，请尝试重新上传");
+  }
 }
 
 function addImagesFromClipboard(event) {
@@ -6021,10 +6099,7 @@ function clearImages() {
     ...state.interiorItems.filter((item) => item.type === "panorama").map((item) => item.image),
   ]
     .filter(Boolean)
-    .forEach((image) => {
-      URL.revokeObjectURL(image.url);
-      imageCache.delete(image.url);
-    });
+    .forEach(revokeImageObject);
   state.images = [];
   state.interiorItems = [];
   state.itemLocations = {};
@@ -6364,7 +6439,7 @@ function bindEvents() {
   window.addEventListener("resize", () => {
     setBookDimensions();
     setModelDimensions();
-    renderOverview();
+    refreshOverview();
     if (state.presentation) applyPresentationBookSize();
   });
   window.addEventListener("scroll", lockViewportScroll, { passive: true });
