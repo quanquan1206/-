@@ -3,12 +3,3592 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="folio-version" content="2026.10.25.2" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta
       name="description"
       content="在浏览器中预览任意尺寸书籍的封面、内页与翻页效果。"
     />
-    <title>Folio — 书本翻页预览</title>
-    <link rel="stylesheet" href="styles.css" />
+    <title>Folio — 书本翻页预览 · 2026.10.25.2</title>
+    <style>
+:root {
+  color-scheme: light;
+  --bg: #f2f0eb;
+  --surface: #faf9f5;
+  --surface-strong: #ffffff;
+  --surface-soft: #e9e6df;
+  --ink: #1f211f;
+  --ink-soft: #676963;
+  --ink-faint: #96978f;
+  --line: #d9d5cc;
+  --line-strong: #c7c1b6;
+  --accent: #dc4d2f;
+  --accent-dark: #bb3e25;
+  --accent-soft: #f7dfd7;
+  --canvas: #e7e4dd;
+  --shadow: 0 16px 44px rgba(38, 35, 29, 0.12);
+  --serif: "Songti SC", "STSong", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Courier New", monospace;
+  --radius: 6px;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #171816;
+  --surface: #20211f;
+  --surface-strong: #292a27;
+  --surface-soft: #30312d;
+  --ink: #f2efe7;
+  --ink-soft: #b3b1a9;
+  --ink-faint: #797a73;
+  --line: #3b3c37;
+  --line-strong: #4c4d47;
+  --accent: #f36949;
+  --accent-dark: #ff7e60;
+  --accent-soft: #46261f;
+  --canvas: #111210;
+  --shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  color: inherit;
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-width: 1020px;
+}
+
+.topbar {
+  z-index: 20;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: 62px;
+  flex: 0 0 62px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.brand-mark {
+  position: relative;
+  display: inline-flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 27px;
+  height: 28px;
+  gap: 2px;
+  margin-right: 10px;
+  padding-bottom: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: rotate(-2deg);
+}
+
+.brand-mark span {
+  display: block;
+  width: 3px;
+  border-radius: 1px;
+  background: #fff9f3;
+}
+
+.brand-mark span:nth-child(1) {
+  height: 12px;
+}
+
+.brand-mark span:nth-child(2) {
+  height: 18px;
+}
+
+.brand-mark span:nth-child(3) {
+  height: 9px;
+}
+
+.brand-name {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+}
+
+.brand-tag {
+  margin-left: 10px;
+  color: var(--ink-faint);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.document-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.document-title > span:nth-child(2) {
+  max-width: 260px;
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4b9b73;
+  box-shadow: 0 0 0 3px rgba(75, 155, 115, 0.13);
+}
+
+.saved-label {
+  padding-left: 9px;
+  border-left: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.top-separator {
+  width: 1px;
+  height: 23px;
+  margin: 0 5px;
+  background: var(--line);
+}
+
+.icon-button,
+.tool-icon,
+.footer-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.icon-button:hover,
+.tool-icon:hover,
+.footer-button:hover {
+  background: var(--surface-soft);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.button-ghost:hover {
+  background: var(--surface-soft);
+}
+
+.button-primary {
+  color: #fff7f2;
+  background: var(--accent);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.button-primary:hover {
+  background: var(--accent-dark);
+}
+
+.button-primary:active {
+  transform: translateY(1px);
+}
+
+.key-hint {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  margin-left: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 3px;
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 226px minmax(480px, 1fr) 294px;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.left-panel,
+.right-panel {
+  z-index: 10;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.left-panel {
+  border-right: 1px solid var(--line);
+}
+
+.right-panel {
+  border-left: 1px solid var(--line);
+  transition: margin-right 0.25s ease;
+}
+
+.panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 18px 16px;
+}
+
+.eyebrow {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+}
+
+h2 {
+  margin: 3px 0 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.page-count-badge {
+  margin-top: 2px;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.page-list {
+  min-height: 100px;
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: 0 12px 18px;
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+.page-list-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 4px 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 7px;
+}
+
+.page-thumb {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 11px;
+  padding: 6px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.page-thumb:hover {
+  background: var(--surface-soft);
+}
+
+.page-thumb.active {
+  border-color: var(--line);
+  background: var(--surface-strong);
+  box-shadow: 0 3px 10px rgba(40, 36, 30, 0.06);
+}
+
+.thumb-paper {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 54px;
+  flex: 0 0 54px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.13);
+  background: #f8f6ef;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.thumb-paper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pure-blank-thumb {
+  background: #fbfaf7;
+}
+
+.pure-blank-thumb span {
+  color: rgba(50, 48, 43, 0.2);
+  font-family: var(--serif);
+  font-size: 13px;
+}
+
+.thumb-paper::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.08));
+  content: "";
+}
+
+.panorama-thumb-paper {
+  position: relative;
+  width: 82px;
+  height: 47px;
+  flex: 0 0 82px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  background: #e8e2d7;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.09);
+}
+
+.panorama-thumb-paper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.panorama-fold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 10px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(41, 33, 23, 0.16) 46%,
+    rgba(255, 255, 255, 0.24) 54%,
+    transparent
+  );
+  transform: translateX(-50%);
+}
+
+.panorama-thumb .thumb-copy strong {
+  color: var(--accent);
+}
+
+.thumb-copy {
+  min-width: 0;
+}
+
+.thumb-copy strong {
+  display: block;
+  margin-bottom: 2px;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumb-copy span {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.page-thumb.dragging {
+  opacity: 0.45;
+}
+
+.page-thumb.drag-target {
+  border-color: var(--accent);
+}
+
+.thumb-drag {
+  display: grid;
+  grid-template-columns: repeat(2, 2px);
+  gap: 2px;
+  margin-left: auto;
+  padding: 5px 2px;
+  cursor: grab;
+}
+
+.thumb-drag i {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.thumb-number {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.empty-pages {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  gap: 9px;
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+.loader-line {
+  width: 18px;
+  height: 1px;
+  background: var(--line-strong);
+  animation: loadingPulse 1s infinite alternate;
+}
+
+@keyframes loadingPulse {
+  to {
+    width: 26px;
+    background: var(--accent);
+  }
+}
+
+.asset-panel {
+  flex: 0 0 auto;
+  padding: 14px 15px 16px;
+  border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--surface) 92%, var(--surface-soft));
+}
+
+.asset-heading {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  color: var(--ink-soft);
+  font-size: 10px;
+}
+
+.asset-heading span:last-child {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.asset-strip {
+  display: flex;
+  min-height: 42px;
+  gap: 6px;
+  overflow-x: auto;
+  margin-bottom: 10px;
+  padding: 4px 4px 2px 0;
+}
+
+.asset-strip img {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  object-fit: cover;
+}
+
+.asset-thumb {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+}
+
+.asset-thumb .asset-remove {
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+
+.cover-slot-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  margin-bottom: 8px;
+}
+
+.cover-slot-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.cover-slot-shell .cover-slot {
+  width: 100%;
+}
+
+.wrap-cover-slot-shell {
+  grid-column: 1 / -1;
+}
+
+.asset-remove {
+  position: absolute;
+  z-index: 6;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 7px rgba(45, 30, 20, 0.24);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.asset-remove:hover {
+  background: var(--accent-dark);
+  transform: scale(1.08);
+}
+
+.asset-remove[hidden] {
+  display: none;
+}
+
+.page-remove {
+  top: 4px;
+  right: 4px;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+}
+
+.cover-slot {
+  display: flex;
+  min-width: 0;
+  height: 42px;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.cover-slot:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cover-slot-preview {
+  display: grid;
+  width: 29px;
+  height: 32px;
+  flex: 0 0 29px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-strong);
+  color: var(--ink-faint);
+}
+
+.cover-slot-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-slot-preview svg {
+  width: 12px;
+  height: 12px;
+}
+
+.cover-slot > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.cover-slot strong {
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.cover-slot small {
+  color: var(--ink-faint);
+  font-size: 6px;
+}
+
+.wrap-cover-slot {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  align-items: center;
+  gap: 7px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.wrap-cover-slot:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.wrap-cover-slot .cover-slot-preview {
+  width: 45px;
+  flex-basis: 45px;
+}
+
+.wrap-cover-slot .cover-slot-preview svg {
+  width: 18px;
+  height: 18px;
+}
+
+.wrap-cover-slot > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wrap-cover-slot strong {
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.wrap-cover-slot small {
+  overflow: hidden;
+  color: var(--ink-faint);
+  font-size: 6px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.spread-upload-button {
+  display: flex;
+  width: 100%;
+  height: 35px;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.spread-upload-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.spread-upload-button.has-panorama {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.spread-upload-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.spread-upload-button > span {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.spread-upload-button strong {
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.spread-upload-button small {
+  color: var(--ink-faint);
+  font-size: 6px;
+}
+
+.asset-empty {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.upload-button {
+  display: flex;
+  width: 100%;
+  height: 39px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 10px;
+  transition: border-color 0.2s ease, color 0.2s ease, background 0.2s ease;
+}
+
+.upload-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.upload-button svg {
+  width: 15px;
+  height: 15px;
+}
+
+.upload-button span {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 7px;
+}
+
+.stage-column {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  background: var(--canvas);
+}
+
+.stage-toolbar {
+  z-index: 8;
+  display: flex;
+  height: 50px;
+  flex: 0 0 50px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.view-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 5px;
+  background: var(--surface-soft);
+}
+
+.view-tab {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 27px;
+  padding: 0 10px;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 10px;
+}
+
+.view-tab svg {
+  width: 14px;
+  height: 14px;
+}
+
+.view-tab.active {
+  color: var(--ink);
+  background: var(--surface-strong);
+  box-shadow: 0 1px 3px rgba(30, 26, 20, 0.11);
+}
+
+.stage-tools {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.tool-button {
+  display: flex;
+  height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.tool-button:hover,
+.tool-button[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.tool-button[aria-pressed="true"] svg {
+  color: var(--accent);
+}
+
+.tool-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 17px;
+  margin: 0 5px;
+  background: var(--line);
+}
+
+.tool-icon {
+  width: 27px;
+  height: 27px;
+}
+
+.tool-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.zoom-label {
+  width: 38px;
+  height: 27px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.stage {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.56), transparent 46%),
+    linear-gradient(130deg, transparent 0 49.9%, rgba(31, 33, 31, 0.02) 50%, transparent 50.1%),
+    var(--canvas);
+}
+
+[data-theme="dark"] .stage {
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 255, 255, 0.035), transparent 46%),
+    linear-gradient(130deg, transparent 0 49.9%, rgba(255, 255, 255, 0.015) 50%, transparent 50.1%),
+    var(--canvas);
+}
+
+.canvas-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.08'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+
+.flip-view {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 44px 50px 54px;
+  perspective: 2200px;
+}
+
+.flip-view[hidden] {
+  display: none;
+}
+
+.book-scene {
+  position: relative;
+  display: flex;
+  max-width: 90%;
+  max-height: 90%;
+  align-items: center;
+  justify-content: center;
+  transform: scale(var(--zoom, 1));
+  transform-origin: center center;
+  transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.book-shadow {
+  position: absolute;
+  right: 3%;
+  bottom: -6%;
+  left: 3%;
+  height: 12%;
+  border-radius: 50%;
+  background: rgba(31, 25, 18, 0.2);
+  filter: blur(18px);
+}
+
+.book {
+  position: relative;
+  display: flex;
+  width: var(--book-width, 580px);
+  height: var(--book-height, 410px);
+  align-items: stretch;
+  transform: rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg))
+    rotateZ(var(--rotate-z, 0deg));
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  transition: transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.book-page {
+  position: relative;
+  width: 50%;
+  height: 100%;
+  overflow: hidden;
+  background: #fbfaf5;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+}
+
+.book-page-left {
+  border-radius: 2px 0 0 3px;
+  box-shadow: inset -11px 0 17px -13px rgba(38, 28, 17, 0.39);
+}
+
+.book-page-right {
+  border-radius: 0 3px 3px 0;
+  box-shadow: inset 11px 0 17px -13px rgba(38, 28, 17, 0.39);
+}
+
+.book-spine {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 14px;
+  pointer-events: none;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(74, 58, 38, 0.04) 37%,
+    rgba(45, 34, 20, 0.18) 50%,
+    rgba(255, 255, 255, 0.26) 53%,
+    transparent
+  );
+}
+
+.panorama-layer {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.panorama-layer[hidden] {
+  display: none;
+}
+
+.panorama-layer canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+}
+
+.panorama-layer::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 18px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(43, 34, 23, 0.1) 42%,
+    rgba(255, 255, 255, 0.2) 52%,
+    rgba(43, 34, 23, 0.08) 62%,
+    transparent
+  );
+  content: "";
+  transform: translateX(-50%);
+}
+
+.model-panorama-layer {
+  transform: translateZ(2px);
+}
+
+.book.is-right-only .book-page-left {
+  display: none;
+}
+
+.book.is-right-only .book-page-right {
+  width: 100%;
+  border-radius: 3px 5px 5px 3px;
+}
+
+.book.is-left-only .book-page-right {
+  display: none;
+}
+
+.book.is-left-only .book-page-left {
+  width: 100%;
+  border-radius: 5px 3px 3px 5px;
+}
+
+.book.is-left-only .book-spine,
+.book.is-right-only .book-spine {
+  display: none;
+}
+
+.book.is-single .book-page-left,
+.book.is-single .book-spine {
+  display: none;
+}
+
+.book.is-single .book-page-right {
+  width: 100%;
+  border-radius: 3px;
+  box-shadow: none;
+}
+
+.book.is-single .edge {
+  right: 0;
+  left: 0;
+}
+
+.page-media {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #fbfaf4;
+}
+
+.page-media img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.hd-page-canvas {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+}
+
+.fill-pages .page-media img {
+  object-fit: cover;
+}
+
+.quality-high .page-media img {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.quality-halftone .page-media img {
+  image-rendering: auto;
+}
+
+.quality-halftone.paper-texture .page-media::before {
+  opacity: 0.22;
+}
+
+.model-book.quality-halftone .page-media::before {
+  display: none;
+}
+
+.paper-texture .page-media::before {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(91deg, transparent 0 4px, rgba(109, 88, 59, 0.018) 5px 6px),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.55' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.045'/%3E%3C/svg%3E");
+  content: "";
+  mix-blend-mode: multiply;
+}
+
+.page-fallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: #f1eee5;
+}
+
+.page-fallback::before,
+.page-fallback::after {
+  position: absolute;
+  content: "";
+}
+
+.blank-page {
+  background:
+    linear-gradient(115deg, rgba(178, 165, 143, 0.09), transparent 42%),
+    #faf8f1;
+}
+
+.pure-blank-page {
+  background: #fbfaf7;
+}
+
+.blank-page::before {
+  width: 28%;
+  height: 1px;
+  margin-bottom: 21%;
+  background: #d7d1c4;
+}
+
+.blank-page::after {
+  width: 44%;
+  height: 6px;
+  border-top: 1px solid #ded9ce;
+  border-bottom: 1px solid #ded9ce;
+}
+
+.blank-page .fallback-index {
+  position: absolute;
+  bottom: 8%;
+  color: #aaa296;
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.art-page {
+  background: #eee9dd;
+}
+
+.art-page .art-shape {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(145deg, transparent 43%, rgba(255, 255, 255, 0.34) 43.2% 43.7%, transparent 44%),
+    linear-gradient(25deg, transparent 55%, rgba(231, 222, 201, 0.7) 55.2% 86%, transparent 86.2%);
+}
+
+.art-page .art-circle {
+  position: absolute;
+  width: 39%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--art-color, #c65e3e);
+  box-shadow: 18px 16px 0 rgba(44, 46, 39, 0.09);
+}
+
+.art-page .art-copy {
+  position: absolute;
+  right: 9%;
+  bottom: 9%;
+  left: 9%;
+  color: #252821;
+}
+
+.art-page .art-kicker {
+  font-family: var(--mono);
+  font-size: clamp(5px, 0.55vw, 9px);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.art-page .art-title {
+  max-width: 90%;
+  margin-top: 5%;
+  font-family: var(--serif);
+  font-size: clamp(11px, 1.45vw, 26px);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.cover-page {
+  background: #22332c;
+}
+
+.cover-page .cover-field {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 76% 23%, rgba(255, 211, 169, 0.23), transparent 22%),
+    linear-gradient(145deg, #2c473a, #17241f 73%);
+}
+
+.cover-page .cover-orbit {
+  position: absolute;
+  top: 13%;
+  left: 11%;
+  width: 69%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(245, 222, 190, 0.55);
+  border-radius: 50%;
+}
+
+.cover-page .cover-orbit::before,
+.cover-page .cover-orbit::after {
+  position: absolute;
+  content: "";
+}
+
+.cover-page .cover-orbit::before {
+  top: 21%;
+  right: -22%;
+  width: 82%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(245, 222, 190, 0.25);
+  border-radius: 50%;
+}
+
+.cover-page .cover-orbit::after {
+  top: 50%;
+  left: -32%;
+  width: 110%;
+  height: 1px;
+  background: rgba(245, 222, 190, 0.23);
+  transform: rotate(-32deg);
+}
+
+.cover-page .cover-disc {
+  position: absolute;
+  top: 38%;
+  left: 31%;
+  width: 28%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #c87047;
+  box-shadow: 9px 12px 0 rgba(4, 9, 7, 0.2);
+}
+
+.cover-page .cover-copy {
+  position: absolute;
+  z-index: 2;
+  top: 17%;
+  right: 8%;
+  left: 8%;
+  color: #f5ead8;
+}
+
+.cover-page .cover-kicker {
+  display: block;
+  margin-bottom: 25%;
+  font-family: var(--mono);
+  font-size: clamp(5px, 0.58vw, 10px);
+  letter-spacing: 0.22em;
+}
+
+.cover-page .cover-title {
+  font-family: var(--serif);
+  font-size: clamp(22px, 4.2vw, 68px);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.15;
+}
+
+.cover-page .cover-subtitle {
+  display: block;
+  width: 44%;
+  margin-top: 8%;
+  color: rgba(245, 234, 216, 0.61);
+  font-size: clamp(6px, 0.65vw, 10px);
+  line-height: 1.9;
+}
+
+.cover-page .cover-footer {
+  position: absolute;
+  right: 8%;
+  bottom: 6%;
+  left: 8%;
+  display: flex;
+  justify-content: space-between;
+  color: rgba(245, 234, 216, 0.62);
+  font-family: var(--mono);
+  font-size: clamp(5px, 0.46vw, 8px);
+  letter-spacing: 0.1em;
+}
+
+.back-cover-page {
+  align-items: stretch;
+  justify-content: flex-start;
+  background:
+    radial-gradient(circle at 86% 74%, rgba(200, 112, 71, 0.13), transparent 27%),
+    #e9e2d3;
+  color: #253129;
+}
+
+.back-cover-grid {
+  position: absolute;
+  inset: 8%;
+  border: 1px solid rgba(37, 49, 41, 0.27);
+}
+
+.back-cover-grid::before,
+.back-cover-grid::after {
+  position: absolute;
+  background: rgba(37, 49, 41, 0.2);
+  content: "";
+}
+
+.back-cover-grid::before {
+  top: 42%;
+  right: 0;
+  left: 0;
+  height: 1px;
+}
+
+.back-cover-grid::after {
+  top: 0;
+  bottom: 0;
+  left: 62%;
+  width: 1px;
+}
+
+.back-cover-copy {
+  position: absolute;
+  top: 17%;
+  right: 11%;
+  left: 11%;
+}
+
+.back-cover-copy span {
+  color: rgba(37, 49, 41, 0.52);
+  font-family: var(--mono);
+  font-size: clamp(5px, 0.5vw, 9px);
+  letter-spacing: 0.14em;
+}
+
+.back-cover-copy strong {
+  display: block;
+  max-width: 70%;
+  margin-top: 8%;
+  font-family: var(--serif);
+  font-size: clamp(18px, 3vw, 48px);
+  line-height: 1.25;
+}
+
+.back-cover-copy p {
+  max-width: 48%;
+  margin-top: 7%;
+  color: rgba(37, 49, 41, 0.58);
+  font-size: clamp(6px, 0.6vw, 10px);
+  line-height: 1.8;
+}
+
+.back-cover-mark {
+  position: absolute;
+  right: 11%;
+  bottom: 11%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 9%;
+}
+
+.back-cover-mark span {
+  display: grid;
+  width: clamp(24px, 4vw, 55px);
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #253129;
+  border-radius: 50%;
+  font-family: var(--serif);
+  font-size: clamp(12px, 1.8vw, 28px);
+}
+
+.back-cover-mark i {
+  color: rgba(37, 49, 41, 0.52);
+  font-family: var(--mono);
+  font-size: clamp(5px, 0.45vw, 8px);
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+.page-number {
+  position: absolute;
+  z-index: 5;
+  bottom: 4.5%;
+  color: rgba(34, 35, 31, 0.48);
+  font-family: var(--mono);
+  font-size: clamp(5px, 0.5vw, 9px);
+}
+
+.book-page-left .page-number {
+  left: 7%;
+}
+
+.book-page-right .page-number {
+  right: 7%;
+}
+
+.page-margins {
+  position: absolute;
+  z-index: 6;
+  display: none;
+  inset: 6.5%;
+  border: 1px solid rgba(202, 75, 48, 0.75);
+  pointer-events: none;
+}
+
+.bleed-guide {
+  position: absolute;
+  z-index: 6;
+  display: none;
+  border: 1px dashed rgba(225, 139, 55, 0.9);
+  pointer-events: none;
+}
+
+.reference-visible .page-margins,
+.reference-visible .bleed-guide {
+  display: block;
+}
+
+.page-margins::before,
+.page-margins::after {
+  position: absolute;
+  background: rgba(202, 75, 48, 0.48);
+  content: "";
+}
+
+.page-margins::before {
+  top: 50%;
+  right: -100%;
+  left: -100%;
+  height: 1px;
+}
+
+.page-margins::after {
+  top: -100%;
+  bottom: -100%;
+  left: 50%;
+  width: 1px;
+}
+
+.guide-corners {
+  position: absolute;
+  z-index: 6;
+  inset: 12px;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.guides-visible .guide-corners {
+  opacity: 1;
+}
+
+.guide-corners span {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  border-color: rgba(217, 77, 47, 0.8);
+  border-style: solid;
+}
+
+.guide-corners span:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-width: 1px 0 0 1px;
+}
+
+.guide-corners span:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-width: 1px 1px 0 0;
+}
+
+.guide-corners span:nth-child(3) {
+  right: 0;
+  bottom: 0;
+  border-width: 0 1px 1px 0;
+}
+
+.guide-corners span:nth-child(4) {
+  bottom: 0;
+  left: 0;
+  border-width: 0 0 1px 1px;
+}
+
+.edge {
+  position: absolute;
+  z-index: -1;
+  right: 1.1%;
+  left: 1.1%;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, #e5e0d5 0 1px, #faf7ef 1px 3px);
+}
+
+.edge-top {
+  top: -3px;
+  transform: skewX(-25deg);
+  transform-origin: bottom left;
+}
+
+.edge-bottom {
+  bottom: -4px;
+  transform: skewX(25deg);
+  transform-origin: top left;
+}
+
+.flip-leaf {
+  position: absolute;
+  z-index: 12;
+  top: 0;
+  left: 50%;
+  display: none;
+  width: 50%;
+  height: 100%;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  pointer-events: none;
+}
+
+.flip-leaf.is-flipping {
+  display: block;
+}
+
+.flip-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fbfaf4;
+  backface-visibility: hidden;
+}
+
+.flip-face::after {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(55, 45, 31, 0.02),
+    rgba(55, 45, 31, 0.18) 58%,
+    rgba(255, 255, 255, 0.25)
+  );
+  content: "";
+  pointer-events: none;
+}
+
+.flip-leaf.is-flipping .flip-face-front::after {
+  animation: pageTurnShade 0.85s ease-in-out both;
+}
+
+.flip-leaf.is-flipping .flip-face-back::after {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.22),
+    rgba(55, 45, 31, 0.18) 42%,
+    rgba(55, 45, 31, 0.02)
+  );
+  animation: pageTurnShadeReverse 0.85s ease-in-out both;
+}
+
+.flip-face-front {
+  border-radius: 0 3px 3px 0;
+  box-shadow: inset 11px 0 14px -11px rgba(38, 28, 17, 0.3);
+}
+
+.flip-face-back {
+  border-radius: 3px 0 0 3px;
+  transform: rotateY(180deg);
+  box-shadow: inset -11px 0 14px -11px rgba(38, 28, 17, 0.3);
+}
+
+.flip-leaf.flip-next {
+  animation: flipNext 0.85s cubic-bezier(0.5, 0.03, 0.2, 1);
+}
+
+.flip-leaf.flip-prev {
+  left: 0;
+  transform-origin: right center;
+  animation: flipPrev 0.85s cubic-bezier(0.5, 0.03, 0.2, 1);
+}
+
+.flip-leaf.rtl-next {
+  left: 0;
+  transform-origin: right center;
+  animation: flipRtlNext 0.85s cubic-bezier(0.5, 0.03, 0.2, 1);
+}
+
+.flip-leaf.rtl-prev {
+  left: 0;
+  transform-origin: right center;
+  animation: flipRtlPrev 0.85s cubic-bezier(0.5, 0.03, 0.2, 1);
+}
+
+@keyframes flipNext {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  48% {
+    opacity: 0.94;
+  }
+  100% {
+    transform: rotateY(-180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes flipPrev {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 0;
+  }
+  52% {
+    opacity: 0.94;
+  }
+  100% {
+    transform: rotateY(180deg);
+    opacity: 1;
+  }
+}
+
+@keyframes flipRtlNext {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  52% {
+    opacity: 0.94;
+  }
+  100% {
+    transform: rotateY(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes flipRtlPrev {
+  0% {
+    transform: rotateY(180deg);
+    opacity: 0;
+  }
+  52% {
+    opacity: 0.94;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes pageTurnShade {
+  0% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pageTurnShadeReverse {
+  0% {
+    opacity: 0.8;
+  }
+  58% {
+    opacity: 0.72;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.page-turn-zone {
+  position: absolute;
+  z-index: 15;
+  top: 20%;
+  display: grid;
+  place-items: center;
+  width: 37px;
+  height: 60%;
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  color: var(--ink-soft);
+  opacity: 0;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.page-turn-zone:hover {
+  color: var(--accent);
+}
+
+.book-scene:hover .page-turn-zone {
+  opacity: 1;
+}
+
+.page-turn-zone-left {
+  left: -56px;
+}
+
+.page-turn-zone-right {
+  right: -56px;
+}
+
+.page-turn-zone-left:hover {
+  transform: translateX(-2px);
+}
+
+.page-turn-zone-right:hover {
+  transform: translateX(2px);
+}
+
+.book-scene.binding-right .page-turn-zone-left {
+  right: -56px;
+  left: auto;
+}
+
+.book-scene.binding-right .page-turn-zone-right {
+  right: auto;
+  left: -56px;
+}
+
+.book-scene.binding-right .page-turn-zone svg {
+  transform: scaleX(-1);
+}
+
+.page-turn-zone.is-disabled {
+  pointer-events: none;
+  opacity: 0 !important;
+}
+
+.flip-nav {
+  position: absolute;
+  z-index: 18;
+  bottom: 16px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  box-shadow: 0 8px 25px rgba(38, 31, 22, 0.12);
+  transform: translateX(-50%);
+  backdrop-filter: blur(10px);
+}
+
+.flip-nav[hidden] {
+  display: none;
+}
+
+.flip-nav-button {
+  display: flex;
+  height: 31px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 9px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.flip-nav-button:hover {
+  color: var(--accent);
+  background: var(--surface-strong);
+}
+
+.flip-nav-button:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+.flip-nav-button:disabled:hover {
+  color: var(--ink-soft);
+  background: transparent;
+}
+
+.flip-nav-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.flip-nav.binding-right .flip-nav-button svg {
+  transform: scaleX(-1);
+}
+
+.flip-nav-index {
+  min-width: 45px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 7px;
+  text-align: center;
+}
+
+.detail-loupe {
+  position: absolute;
+  z-index: 25;
+  display: none;
+  width: 168px;
+  height: 168px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 10px 40px rgba(22, 19, 14, 0.32), 0 0 0 1px rgba(0, 0, 0, 0.14);
+  pointer-events: none;
+}
+
+.detail-loupe.visible {
+  display: block;
+}
+
+.detail-loupe::after {
+  position: absolute;
+  inset: 0;
+  border: 9px solid rgba(255, 255, 255, 0.22);
+  border-radius: 50%;
+  content: "";
+}
+
+.detail-loupe-image {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.detail-loupe-image img {
+  position: absolute;
+  max-width: none;
+  object-fit: cover;
+  image-rendering: pixelated;
+  user-select: none;
+}
+
+.detail-loupe > span {
+  position: absolute;
+  z-index: 2;
+  right: 16px;
+  bottom: 17px;
+  padding: 3px 6px;
+  border-radius: 20px;
+  background: rgba(19, 20, 17, 0.72);
+  color: white;
+  font-family: var(--mono);
+  font-size: 7px;
+  letter-spacing: 0.04em;
+}
+
+.stage-footer {
+  z-index: 8;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  height: 44px;
+  flex: 0 0 44px;
+  align-items: center;
+  padding: 0 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.spread-indicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.spread-indicator span:first-child {
+  color: var(--ink-soft);
+}
+
+.footer-dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.spread-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.footer-button {
+  width: 25px;
+  height: 25px;
+}
+
+.footer-button svg {
+  width: 13px;
+  height: 13px;
+}
+
+.footer-button:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.page-progress {
+  width: 74px;
+  height: 2px;
+  margin: 0 5px;
+  overflow: hidden;
+  background: var(--line);
+}
+
+.page-progress span {
+  display: block;
+  width: 10%;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.35s ease;
+}
+
+.spread-nav.binding-right #firstButton {
+  order: 1;
+}
+
+.spread-nav.binding-right #nextButton {
+  order: 2;
+}
+
+.spread-nav.binding-right .page-progress {
+  order: 3;
+}
+
+.spread-nav.binding-right #prevButton {
+  order: 4;
+}
+
+.spread-nav.binding-right #lastButton {
+  order: 5;
+}
+
+.spread-nav.binding-right .footer-button svg {
+  transform: scaleX(-1);
+}
+
+.fit-width-button {
+  justify-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 27px;
+  padding: 0 6px;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font-size: 9px;
+}
+
+.fit-width-button:hover {
+  color: var(--ink-soft);
+  background: var(--surface-soft);
+}
+
+.fit-width-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.model-view {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.08), transparent 38%),
+    linear-gradient(160deg, #e4e0d6, #d6d1c6);
+}
+
+[data-theme="dark"] .model-view {
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.045), transparent 38%),
+    linear-gradient(160deg, #1b1d1a, #10110f);
+}
+
+.model-view[hidden] {
+  display: none;
+}
+
+.model-stage {
+  position: absolute;
+  inset: 0;
+  perspective: 1750px;
+  touch-action: none;
+  cursor: grab;
+}
+
+.model-stage.is-dragging {
+  cursor: grabbing;
+}
+
+.model-light {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  width: 54%;
+  height: 56%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+  filter: blur(60px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+[data-theme="dark"] .model-light {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.model-floor {
+  position: absolute;
+  top: 62%;
+  left: 50%;
+  width: min(72%, 780px);
+  height: 240px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse, rgba(48, 42, 33, 0.2), transparent 67%),
+    repeating-radial-gradient(ellipse, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 8px);
+  filter: blur(8px);
+  transform: translateX(-50%) rotateX(74deg);
+  pointer-events: none;
+}
+
+.model-scene {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  transform-style: preserve-3d;
+}
+
+.model-cover-preview {
+  position: absolute;
+  z-index: 24;
+  top: 50%;
+  width: clamp(104px, 11vw, 150px);
+  aspect-ratio: var(--model-cover-ratio, 0.75);
+  padding: 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent-soft));
+  box-shadow: 0 15px 34px rgba(29, 24, 18, 0.24);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.model-cover-preview-front {
+  left: 14px;
+  transform: translateY(-50%) perspective(500px) rotateY(7deg);
+  transform-origin: left center;
+}
+
+.model-cover-preview-back {
+  right: 14px;
+  transform: translateY(-50%) perspective(500px) rotateY(-7deg);
+  transform-origin: right center;
+}
+
+.model-cover-preview-canvas {
+  position: absolute;
+  inset: 6px 6px 29px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #f5f1e7;
+}
+
+.model-cover-preview-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.model-cover-preview > span {
+  position: absolute;
+  right: 5px;
+  bottom: 7px;
+  left: 5px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-align: center;
+}
+
+.model-book {
+  --model-width: 720px;
+  --model-height: var(--model-book-height, 510px);
+  position: relative;
+  display: flex;
+  width: var(--model-width);
+  height: var(--model-height);
+  align-items: stretch;
+  transform: rotateX(var(--model-rot-x, -8deg)) rotateY(var(--model-rot-y, -17deg))
+    scale(var(--model-zoom, 1));
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  transition: transform 0.18s cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: transform;
+}
+
+.model-stage.is-dragging .model-book {
+  transition: none;
+}
+
+.model-book .book-page {
+  width: 50%;
+  height: 100%;
+  transform: translateZ(1px);
+  box-shadow: 0 12px 35px rgba(30, 24, 17, 0.14);
+}
+
+.model-book.is-right-only .model-page-left,
+.model-book.is-single .model-page-left {
+  display: none;
+}
+
+.model-book.is-right-only .model-page-right,
+.model-book.is-single .model-page-right {
+  width: 100%;
+}
+
+.model-book.is-left-only .model-page-right {
+  display: none;
+}
+
+.model-book.is-left-only .model-page-left {
+  width: 100%;
+}
+
+.model-book .page-media img {
+  image-rendering: auto;
+}
+
+.model-back-cover {
+  position: absolute;
+  z-index: -3;
+  inset: 0;
+  display: none;
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.07), transparent 40%),
+    #25352d;
+  box-shadow: 0 6px 20px rgba(26, 21, 15, 0.2);
+  transform: translateZ(calc(-1 * var(--model-depth, 24px))) rotateY(180deg);
+  transform-style: preserve-3d;
+}
+
+.model-book.show-back-cover .model-back-cover {
+  display: block;
+}
+
+.model-book:not(.is-right-only):not(.is-left-only) .model-back-cover {
+  right: auto;
+  left: 50%;
+  width: 50%;
+}
+
+.model-book.binding-right:not(.is-right-only):not(.is-left-only) .model-back-cover {
+  right: auto;
+  left: 0;
+}
+
+.model-back-cover-content {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 4px;
+  backface-visibility: hidden;
+}
+
+.model-back-cover-content .page-media,
+.model-back-cover-content .page-fallback {
+  position: absolute;
+  inset: 0;
+}
+
+.model-stack {
+  position: absolute;
+  z-index: -2;
+  inset: 2px 3px;
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(0deg, #d7d0c2 0 1px, #f5f1e7 1px 3px),
+    #ece7dc;
+  transform: translateZ(calc(var(--model-depth, 24px) * -0.5));
+  box-shadow: 0 8px 14px rgba(32, 27, 20, 0.2);
+}
+
+.model-block-face {
+  position: absolute;
+  z-index: -1;
+  background: #d8d1c3;
+  pointer-events: none;
+}
+
+.model-face-top {
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--model-depth, 24px);
+  transform: rotateX(90deg);
+  transform-origin: top center;
+  background:
+    repeating-linear-gradient(90deg, #e7e1d5 0 1px, #f8f4eb 1px 3px),
+    #e4ded1;
+}
+
+.model-face-bottom {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--model-depth, 24px);
+  transform: rotateX(-90deg);
+  transform-origin: bottom center;
+  filter: brightness(0.86);
+}
+
+.model-face-left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--model-depth, 24px);
+  transform: rotateY(-90deg);
+  transform-origin: left center;
+  filter: brightness(0.92);
+}
+
+.model-face-right {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--model-depth, 24px);
+  transform: rotateY(90deg);
+  transform-origin: right center;
+  filter: brightness(0.86);
+}
+
+.model-spine {
+  position: absolute;
+  z-index: 8;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 15px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(41, 32, 21, 0.08) 30%,
+    rgba(31, 24, 16, 0.28) 50%,
+    rgba(255, 255, 255, 0.22) 55%,
+    transparent
+  );
+  transform: translateX(-50%) translateZ(3px);
+}
+
+.model-book.is-single .model-spine {
+  display: none;
+}
+
+.model-book.is-right-only .model-spine {
+  left: 0;
+  width: 13px;
+  transform: translateZ(4px);
+}
+
+.model-book.is-left-only .model-spine {
+  right: 0;
+  left: auto;
+  width: 13px;
+  transform: translateZ(4px);
+}
+
+.model-flip-leaf {
+  transform-style: preserve-3d;
+}
+
+.model-page-right {
+  transform-origin: left center;
+}
+
+.model-drag-hint {
+  position: absolute;
+  bottom: 32px;
+  left: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-faint);
+  font-size: 9px;
+  pointer-events: none;
+}
+
+.model-drag-hint > span,
+.model-drag-hint > b {
+  font-weight: 400;
+}
+
+.model-drag-hint > i {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+}
+
+.model-drag-hint > b {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.model-drag-hint svg {
+  width: 15px;
+  height: 15px;
+}
+
+.model-reset {
+  position: absolute;
+  top: 20px;
+  right: 22px;
+  display: flex;
+  height: 31px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface) 74%, transparent);
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 8px;
+  backdrop-filter: blur(8px);
+}
+
+.model-reset:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.model-reset svg {
+  width: 13px;
+  height: 13px;
+}
+
+.overview-view {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  padding: 26px 30px 44px;
+  background: var(--canvas);
+}
+
+.overview-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.overview-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.overview-heading h2 {
+  font-size: 20px;
+}
+
+.legend {
+  display: flex;
+  gap: 14px;
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend i {
+  display: inline-block;
+  width: 15px;
+  height: 8px;
+}
+
+.legend-bleed {
+  border: 1px dotted var(--accent);
+}
+
+.legend-trim {
+  border-right: 1px solid #eb5b39;
+  border-left: 1px solid #eb5b39;
+}
+
+.spread-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px 28px;
+}
+
+.overview-spread {
+  cursor: pointer;
+}
+
+.overview-spread:hover .overview-paper {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(38, 31, 22, 0.16);
+}
+
+.overview-paper {
+  position: relative;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid rgba(58, 49, 37, 0.17);
+  background: #faf8f1;
+  box-shadow: 0 5px 13px rgba(38, 31, 22, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.overview-paper::before,
+.overview-paper::after {
+  position: absolute;
+  z-index: 3;
+  top: 4px;
+  bottom: 4px;
+  width: 1px;
+  border-left: 1px dashed rgba(205, 75, 46, 0.72);
+  content: "";
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.overview-paper::before {
+  left: 4px;
+}
+
+.overview-paper::after {
+  right: 4px;
+}
+
+.overview-page {
+  position: relative;
+  width: 50%;
+  overflow: hidden;
+  background: #faf8f1;
+}
+
+.overview-paper.is-closed .overview-page {
+  width: 100%;
+}
+
+.overview-page img,
+.overview-page .thumb-paper {
+  width: 100%;
+  height: 100%;
+}
+
+.overview-page .thumb-paper {
+  border: 0;
+  box-shadow: none;
+}
+
+.overview-page .page-fallback {
+  position: relative;
+  aspect-ratio: var(--page-ratio, 0.75);
+}
+
+.overview-meta {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 2px 0;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 0.03em;
+}
+
+.overview-meta strong {
+  color: var(--ink-soft);
+  font-weight: 500;
+}
+
+.drag-overlay {
+  position: absolute;
+  z-index: 30;
+  inset: 15px;
+  display: none;
+  place-items: center;
+  border: 1px dashed var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.drag-overlay.visible {
+  display: grid;
+}
+
+.drag-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+}
+
+.drag-card svg {
+  width: 30px;
+  height: 30px;
+  margin-bottom: 5px;
+  color: var(--accent);
+}
+
+.drag-card strong {
+  font-size: 15px;
+}
+
+.drag-card span {
+  color: var(--ink-faint);
+  font-size: 10px;
+}
+
+.panel-heading {
+  position: relative;
+  padding: 22px 20px 15px;
+}
+
+.settings-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-color: var(--line-strong) transparent;
+  scrollbar-width: thin;
+}
+
+.setting-section {
+  padding: 17px 20px 19px;
+  border-top: 1px solid var(--line);
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.section-number {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 8px;
+}
+
+.text-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  font-size: 11px;
+}
+
+.text-input:hover {
+  border-color: var(--line-strong);
+}
+
+.text-input:focus {
+  border-color: var(--accent);
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.preset-card {
+  display: flex;
+  min-width: 0;
+  height: 77px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.preset-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+
+.preset-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.preset-card strong {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.preset-card small {
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 6px;
+}
+
+.preset-shape {
+  display: block;
+  width: 18px;
+  height: calc(18px * var(--ratio));
+  max-height: 29px;
+  margin-bottom: 2px;
+  border: 1px solid var(--ink-soft);
+  background: color-mix(in srgb, var(--surface-strong) 60%, transparent);
+}
+
+.preset-card.active .preset-shape {
+  border-color: var(--accent);
+}
+
+.custom-shape {
+  height: 24px;
+  border-style: dashed;
+}
+
+.dimension-row {
+  display: grid;
+  grid-template-columns: 1fr 25px 1fr;
+  align-items: end;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.dimension-row label > span:first-child {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+.number-field {
+  display: flex;
+  height: 33px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+}
+
+.number-field:focus-within {
+  border-color: var(--accent);
+}
+
+.number-field input {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0 2px 0 9px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+
+.number-field input::-webkit-inner-spin-button {
+  display: none;
+}
+
+.number-field em {
+  padding-right: 7px;
+  color: var(--ink-faint);
+  font-family: var(--mono);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.swap-orientation {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 33px;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+}
+
+.swap-orientation:hover {
+  color: var(--accent);
+}
+
+.swap-orientation svg {
+  width: 13px;
+  height: 13px;
+}
+
+.ratio-caption {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--ink-faint);
+  font-size: 8px;
+}
+
+.ratio-caption strong {
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-weight: 400;
+}
+
+.stepper {
+  display: grid;
+  grid-template-columns: 35px 1fr 35px;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.stepper button {
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.stepper button:hover {
+  background: var(--surface-soft);
+  color: var(--accent);
+}
+
+.stepper button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.stepper button:disabled:hover {
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.stepper > div {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.stepper input {
+  width: 43px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-family: var(--mono);
+  font-size: 13px;
+  text-align: right;
+}
+
+.stepper input::-webkit-inner-spin-button {
+  display: none;
+}
+
+.stepper input:read-only {
+  color: var(--ink-faint);
+  cursor: default;
+}
+
+.stepper span {
+  margin-left: 2px;
+  color: var(--ink-faint);
+  font-size: 9px;
+}
+
+.field-help {
+  margin: 7px 0 0;
+  color: var(--ink-faint);
+  font-size: 8px;
+  line-height: 1.6;
+}
+
+.binding-control {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.binding-card {
+  display: flex;
+  min-width: 0;
+  height: 64px;
+  align-items: center;
+  gap: 9px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-align: left;
+}
+
+.binding-card:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-soft);
+}
+
+.binding-card.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.binding-card > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.binding-card strong {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.binding-card small {
+  color: var(--ink-faint);
+  font-size: 6px;
+  line-height: 1.35;
+}
+
+.binding-diagram {
+  position: relative;
+  display: flex;
+  width: 32px;
+  height: 37px;
+  flex: 0 0 32px;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface-strong);
+  transform: perspective(80px) rotateY(-10deg);
+}
+
+.binding-diagram i {
+  width: 50%;
+  border-right: 1px solid var(--line);
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.15), rgba(33, 30, 24, 0.08));
+}
+
+.binding-diagram b {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 3px;
+  background: var(--accent);
+}
+
+.binding-diagram-left b {
+  left: -2px;
+}
+
+.binding-diagram-right {
+  transform: perspective(80px) rotateY(10deg);
+}
+
+.binding-diagram-right b {
+  right: -2px;
+}
+
+.quality-control {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-soft);
+}
+
+.quality-control button {
+  display: flex;
+  height: 43px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.quality-control button:hover {
+  background: color-mix(in srgb, var(--surface-strong) 60%, transparent);
+}
+
+.quality-control button.active {
+  background: var(--surface-strong);
+  color: var(--ink);
+  box-shadow: 0 1px 4px rgba(26, 23, 18, 0.11);
+}
+
+.quality-control strong {
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.quality-control small {
+  color: var(--ink-faint);
+  font-size: 6px;
+}
+
+.quality-control button.active strong {
+  color: var(--accent);
+}
+
+.quality-help {
+  min-height: 26px;
+  margin: 7px 0 0;
+  color: var(--ink-faint);
+  font-size: 7px;
+  line-height: 1.65;
+}
+
+.margin-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.margin-controls > label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink-faint);
+  font-size: 8px;
+}
+
+.number-field.compact {
+  height: 30px;
+}
+
+.number-field.compact input {
+  font-size: 9px;
+}
+
+.bleed-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.bleed-control > span:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bleed-control strong {
+  color: var(--ink);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.bleed-control small {
+  color: var(--ink-faint);
+  font-size: 7px;
+}
+
+.bleed-control .number-field {
+  width: 78px;
+  flex: 0 0 78px;
+}
+
+.toggle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.toggle-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.toggle-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle-row strong {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.toggle-row small {
+  color: var(--ink-faint);
+  font-size: 8px;
+}
+
+.toggle-row input {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.toggle-row i {
+  position: relative;
+  width: 29px;
+  height: 16px;
+  flex: 0 0 29px;
+  border-radius: 20px;
+  background: var(--line);
+  transition: background 0.2s ease;
+}
+
+.toggle-row i::after {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--surface-strong);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  content: "";
+  transition: transform 0.2s ease;
+}
+
+.toggle-row input:checked + i {
+  background: var(--accent);
+}
+
+.toggle-row input:checked + i::after {
+  transform: translateX(13px);
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.quick-actions button {
+  display: flex;
+  height: 33px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  font-size: 8px;
+}
+
+.quick-actions button:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  background: var(--surface-soft);
+}
+
+.quick-actions svg {
+  width: 12px;
+  height: 12px;
+}
+
+.panel-footer {
+  display: flex;
+  height: 40px;
+  flex: 0 0 40px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 15px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 7px;
+}
+
+.local-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--mono);
+  font-size: 6px;
+  letter-spacing: 0.08em;
+}
+
+.local-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+.presentation-overlay {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.09), transparent 42%),
+    #131411;
+  color: #f5f0e7;
+}
+
+.presentation-overlay[hidden] {
+  display: none;
+}
+
+.presentation-close {
+  position: absolute;
+  top: 24px;
+  right: 26px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.17);
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.presentation-close:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+.presentation-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+.presentation-header {
+  position: absolute;
+  top: 29px;
+  left: 32px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: rgba(245, 240, 231, 0.84);
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+}
+
+.presentation-header span:last-child {
+  padding-left: 13px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(245, 240, 231, 0.34);
+}
+
+.presentation-stage {
+  display: flex;
+  width: min(88vw, 1280px);
+  height: min(72vh, 820px);
+  align-items: center;
+  justify-content: center;
+  perspective: 2500px;
+}
+
+.presentation-stage .presentation-book {
+  max-width: 100%;
+  max-height: 100%;
+  flex: 0 0 auto;
+  transition: width 0.25s ease, height 0.25s ease;
+}
+
+.presentation-stage .page-turn-zone {
+  display: none;
+}
+
+.presentation-footer {
+  position: absolute;
+  bottom: 27px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 19px;
+  transform: translateX(-50%);
+}
+
+.presentation-footer button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.presentation-footer button:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+.presentation-footer svg {
+  width: 14px;
+  height: 14px;
+}
+
+.presentation-footer span {
+  color: rgba(255, 255, 255, 0.5);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.shortcut-modal {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+.shortcut-modal[hidden] {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(16, 16, 14, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.modal-card {
+  position: relative;
+  width: min(360px, calc(100vw - 40px));
+  padding: 27px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.25);
+}
+
+.modal-card h2 {
+  margin: 6px 0 20px;
+  font-size: 21px;
+}
+
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--surface-soft);
+}
+
+.modal-close svg {
+  width: 14px;
+  height: 14px;
+}
+
+.shortcut-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.shortcut-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 11px;
+}
+
+kbd {
+  display: inline-grid;
+  min-width: 23px;
+  height: 22px;
+  place-items: center;
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: var(--surface-strong);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 9px;
+}
+
+.toast-region {
+  position: fixed;
+  z-index: 150;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-strong);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+  font-size: 10px;
+  animation: toastIn 0.25s ease both;
+}
+
+.toast::before {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+}
+
+.toast.leaving {
+  animation: toastOut 0.25s ease both;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.noscript-warning {
+  position: fixed;
+  z-index: 999;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+@media (max-width: 1240px) {
+  .workspace {
+    grid-template-columns: 205px minmax(420px, 1fr) 275px;
+  }
+
+  .brand-tag {
+    display: none;
+  }
+
+  .saved-label {
+    display: none;
+  }
+
+  .model-cover-preview {
+    width: 78px;
+  }
+
+  .model-cover-preview-front {
+    left: 6px;
+  }
+
+  .model-cover-preview-back {
+    right: 6px;
+  }
+}
+
+@media (max-height: 720px) {
+  .setting-section {
+    padding-top: 13px;
+    padding-bottom: 14px;
+  }
+
+  .toggle-list {
+    gap: 9px;
+  }
+
+  .asset-panel {
+    padding-top: 10px;
+    padding-bottom: 12px;
+  }
+}
+
+</style>
   </head>
   <body>
     <div class="app-shell">
@@ -24,7 +3604,7 @@
         <div class="document-title">
           <span class="status-dot"></span>
           <span id="documentName">未命名画册</span>
-          <span class="saved-label">本地保存</span>
+          <span class="saved-label">版本 2026.10.25.2</span>
         </div>
 
         <div class="top-actions">
@@ -659,6 +4239,2184 @@
       <div class="noscript-warning">请启用 JavaScript 以使用书本预览功能。</div>
     </noscript>
 
-    <script src="app.js"></script>
+    <script>
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
+
+const state = {
+  title: "未命名画册",
+  width: 210,
+  height: 280,
+  pages: 12,
+  currentSpread: 0,
+  preset: "custom",
+  images: [],
+  pageImages: [],
+  physicalPages: [],
+  layoutSpreads: [],
+  interiorItems: [],
+  itemLocations: {},
+  coverImage: null,
+  backCoverImage: null,
+  wrapCoverImage: null,
+  panoramas: {},
+  zoom: 1,
+  fillPages: true,
+  texture: true,
+  margins: false,
+  marginValues: { top: 10, right: 10, bottom: 12, left: 12 },
+  bleed: 3,
+  guides: false,
+  spreadMode: true,
+  binding: "left",
+  quality: "high",
+  view: "flip",
+  isFlipping: false,
+  presentation: false,
+  draggedImageIndex: null,
+  modelRotation: { x: -8, y: -17 },
+  modelZoom: 1,
+};
+
+const imageCache = new Map();
+let modelCanvasRedrawTimer = null;
+
+const presetSizes = {
+  a4: { width: 210, height: 297 },
+  a5: { width: 148, height: 210 },
+  square: { width: 210, height: 210 },
+};
+
+const artColors = ["#c66748", "#d5a743", "#557765", "#805a74", "#c27a50", "#5e7681", "#a65a44"];
+
+const els = {
+  root: document.documentElement,
+  pageList: $("#pageList"),
+  pageCountBadge: $("#pageCountBadge"),
+  assetStrip: $("#assetStrip"),
+  assetCount: $("#assetCount"),
+  uploadButton: $("#uploadButton"),
+  fileInput: $("#fileInput"),
+  coverUploadButton: $("#coverUploadButton"),
+  backCoverUploadButton: $("#backCoverUploadButton"),
+  wrapCoverUploadButton: $("#wrapCoverUploadButton"),
+  coverInput: $("#coverInput"),
+  backCoverInput: $("#backCoverInput"),
+  wrapCoverInput: $("#wrapCoverInput"),
+  spreadUploadButton: $("#spreadUploadButton"),
+  spreadInput: $("#spreadInput"),
+  spreadAssetStatus: $("#spreadAssetStatus"),
+  coverPreview: $("#coverPreview"),
+  backCoverPreview: $("#backCoverPreview"),
+  wrapCoverPreview: $("#wrapCoverPreview"),
+  removeCoverButton: $("#removeCoverButton"),
+  removeBackCoverButton: $("#removeBackCoverButton"),
+  removeWrapCoverButton: $("#removeWrapCoverButton"),
+  nameInput: $("#nameInput"),
+  documentName: $("#documentName"),
+  widthInput: $("#widthInput"),
+  heightInput: $("#heightInput"),
+  pagesInput: $("#pagesInput"),
+  pagesHelp: $("#pagesHelp"),
+  pagesMinusButton: $("#pagesMinusButton"),
+  pagesPlusButton: $("#pagesPlusButton"),
+  ratioLabel: $("#ratioLabel"),
+  presetGrid: $("#presetGrid"),
+  book: $("#book"),
+  bookScene: $("#bookScene"),
+  leftPage: $("#leftPage"),
+  rightPage: $("#rightPage"),
+  flipLeaf: $("#flipLeaf"),
+  flipFront: $("#flipFront"),
+  flipBack: $("#flipBack"),
+  panoramaLayer: $("#panoramaLayer"),
+  flipView: $("#flipView"),
+  modelView: $("#modelView"),
+  modelStage: $("#modelStage"),
+  modelScene: $("#modelScene"),
+  modelBook: $("#modelBook"),
+  modelBackCoverContent: $("#modelBackCoverContent"),
+  modelFrontCoverPreview: $("#modelFrontCoverPreview"),
+  modelBackCoverPreview: $("#modelBackCoverPreview"),
+  modelFrontCoverPreviewCanvas: $("#modelFrontCoverPreviewCanvas"),
+  modelBackCoverPreviewCanvas: $("#modelBackCoverPreviewCanvas"),
+  modelLeftPage: $("#modelLeftPage"),
+  modelRightPage: $("#modelRightPage"),
+  modelFlipLeaf: $("#modelFlipLeaf"),
+  modelFlipFront: $("#modelFlipFront"),
+  modelFlipBack: $("#modelFlipBack"),
+  modelPanoramaLayer: $("#modelPanoramaLayer"),
+  modelResetButton: $("#modelResetButton"),
+  modelThicknessInfo: $("#modelThicknessInfo"),
+  overviewView: $("#overviewView"),
+  spreadGrid: $("#spreadGrid"),
+  stage: $("#stage"),
+  zoomLabel: $("#zoomLabel"),
+  currentSpreadLabel: $("#currentSpreadLabel"),
+  currentPageLabel: $("#currentPageLabel"),
+  progressBar: $("#progressBar"),
+  prevButton: $("#prevButton"),
+  nextButton: $("#nextButton"),
+  footerNav: $(".spread-nav"),
+  prevZone: $("#prevZone"),
+  nextZone: $("#nextZone"),
+  firstButton: $("#firstButton"),
+  lastButton: $("#lastButton"),
+  dragOverlay: $("#dragOverlay"),
+  presentationOverlay: $("#presentationOverlay"),
+  presentationStage: $("#presentationStage"),
+  presentationTitle: $("#presentationTitle"),
+  presentationCounter: $("#presentationCounter"),
+  presentationPrev: $("#presentationPrev"),
+  presentationNext: $("#presentationNext"),
+  shortcutModal: $("#shortcutModal"),
+  toastRegion: $("#toastRegion"),
+  fileStatus: $("#fileStatus"),
+  marginsToggle: $("#marginsToggle"),
+  marginTopInput: $("#marginTopInput"),
+  marginRightInput: $("#marginRightInput"),
+  marginBottomInput: $("#marginBottomInput"),
+  marginLeftInput: $("#marginLeftInput"),
+  bleedInput: $("#bleedInput"),
+  coverToggle: $("#coverToggle"),
+  textureToggle: $("#textureToggle"),
+  guidesButton: $("#guidesButton"),
+  spreadButton: $("#spreadButton"),
+  flipNav: $("#flipNav"),
+  flipNavIndex: $("#flipNavIndex"),
+  viewerPrevButton: $("#viewerPrevButton"),
+  viewerNextButton: $("#viewerNextButton"),
+  detailLoupe: $("#detailLoupe"),
+  detailLoupeImage: $("#detailLoupeImage"),
+  qualityHelp: $("#qualityHelp"),
+};
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function lockViewportScroll() {
+  if (window.scrollY !== 0) window.scrollTo(0, 0);
+  if (document.documentElement.scrollTop !== 0) document.documentElement.scrollTop = 0;
+  if (document.body.scrollTop !== 0) document.body.scrollTop = 0;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function pageImageAt(index) {
+  return state.physicalPages[index]?.image ?? null;
+}
+
+function coverFaceSource(face) {
+  const directImage = face === "front" ? state.coverImage : state.backCoverImage;
+  if (directImage) return { image: directImage, crop: null };
+  if (state.wrapCoverImage) {
+    const frontIsRightHalf = state.binding === "left";
+    const shouldUseRightHalf = face === "front" ? frontIsRightHalf : !frontIsRightHalf;
+    return {
+      image: state.wrapCoverImage,
+      crop: shouldUseRightHalf ? "right" : "left",
+    };
+  }
+  return { image: null, crop: null };
+}
+
+function syncPageSlots() {
+  const demoPageCount = Math.max(0, state.pages - 4);
+  const units = state.interiorItems.length
+    ? state.interiorItems
+    : Array.from({ length: demoPageCount }, (_, index) => ({
+        id: `demo-page-${index}`,
+        type: "page",
+        image: null,
+        demo: true,
+      }));
+  const physicalPages = [];
+  const layoutSpreads = [];
+  const panoramas = {};
+  const locations = {};
+  let nextInnerNumber = 1;
+
+  const pushPage = (page) => {
+    physicalPages.push(page);
+    return physicalPages.length - 1;
+  };
+  const pushSpread = (spread) => {
+    layoutSpreads.push(spread);
+    return layoutSpreads.length - 1;
+  };
+  const padded = (number) => String(number).padStart(2, "0");
+
+  const frontFace = coverFaceSource("front");
+  const backFace = coverFaceSource("back");
+  const frontCoverIndex = pushPage({
+    kind: "front-cover",
+    image: frontFace.image,
+    crop: frontFace.crop,
+    label: "封面",
+  });
+  pushSpread({ kind: "front-cover", pageIndex: frontCoverIndex, label: "封面" });
+
+  const coverReverseIndex = pushPage({
+    kind: "pure-blank",
+    image: null,
+    label: "封面反面",
+  });
+  pushSpread({
+    kind: "cover-reverse",
+    pageIndex: coverReverseIndex,
+    label: "封面反面",
+    note: "纯空白",
+  });
+
+  if (units.length) {
+    const firstUnit = units[0];
+    if (firstUnit.type === "panorama") {
+      const firstNumber = nextInnerNumber;
+      const leftPageIndex = pushPage({
+        kind: "panorama-half",
+        image: firstUnit.image,
+        innerNumber: firstNumber,
+        itemId: firstUnit.id,
+      });
+      const rightPageIndex = pushPage({
+        kind: "panorama-half",
+        image: firstUnit.image,
+        innerNumber: firstNumber + 1,
+        itemId: firstUnit.id,
+      });
+      const spreadIndex = pushSpread({
+        kind: "panorama",
+        leftPageIndex,
+        rightPageIndex,
+        label: `内页 ${padded(firstNumber)}–${padded(firstNumber + 1)}`,
+      });
+      panoramas[spreadIndex] = firstUnit.image;
+      locations[firstUnit.id] = {
+        spreadIndex,
+        startInner: firstNumber,
+        endInner: firstNumber + 1,
+      };
+      nextInnerNumber += 2;
+    } else {
+      const firstNumber = nextInnerNumber;
+      const pageIndex = pushPage({
+        kind: "inner-page",
+        image: firstUnit.image,
+        innerNumber: firstNumber,
+        itemId: firstUnit.id,
+      });
+      const spreadIndex = pushSpread({
+        kind: "single-inner",
+        pageIndex,
+        label: `内页 ${padded(firstNumber)}`,
+      });
+      if (!firstUnit.demo) {
+        locations[firstUnit.id] = {
+          spreadIndex,
+          startInner: firstNumber,
+          endInner: firstNumber,
+        };
+      }
+      nextInnerNumber += 1;
+    }
+
+    let pending = [];
+    const flushPendingPair = () => {
+      const [first, second] = pending;
+      const spreadIndex = pushSpread({
+        kind: "inner-spread",
+        leftPageIndex: first.pageIndex,
+        rightPageIndex: second.pageIndex,
+        label: `内页 ${padded(first.innerNumber)}–${padded(second.innerNumber)}`,
+      });
+      [first, second].forEach((entry) => {
+        if (!entry.unit.demo) {
+          locations[entry.unit.id] = {
+            spreadIndex,
+            startInner: entry.innerNumber,
+            endInner: entry.innerNumber,
+          };
+        }
+      });
+      pending = [];
+    };
+
+    units.slice(1).forEach((unit) => {
+      if (unit.type === "panorama") {
+        if (pending.length === 1) {
+          const single = pending.pop();
+          const spreadIndex = pushSpread({
+            kind: "single-inner",
+            pageIndex: single.pageIndex,
+            label: `内页 ${padded(single.innerNumber)}`,
+          });
+          if (!single.unit.demo) {
+            locations[single.unit.id] = {
+              spreadIndex,
+              startInner: single.innerNumber,
+              endInner: single.innerNumber,
+            };
+          }
+        }
+        const firstNumber = nextInnerNumber;
+        const leftPageIndex = pushPage({
+          kind: "panorama-half",
+          image: unit.image,
+          innerNumber: firstNumber,
+          itemId: unit.id,
+        });
+        const rightPageIndex = pushPage({
+          kind: "panorama-half",
+          image: unit.image,
+          innerNumber: firstNumber + 1,
+          itemId: unit.id,
+        });
+        const spreadIndex = pushSpread({
+          kind: "panorama",
+          leftPageIndex,
+          rightPageIndex,
+          label: `内页 ${padded(firstNumber)}–${padded(firstNumber + 1)}`,
+        });
+        panoramas[spreadIndex] = unit.image;
+        locations[unit.id] = {
+          spreadIndex,
+          startInner: firstNumber,
+          endInner: firstNumber + 1,
+        };
+        nextInnerNumber += 2;
+        return;
+      }
+
+      const innerNumber = nextInnerNumber;
+      const pageIndex = pushPage({
+        kind: "inner-page",
+        image: unit.image,
+        innerNumber,
+        itemId: unit.id,
+      });
+      pending.push({ unit, pageIndex, innerNumber });
+      nextInnerNumber += 1;
+      if (pending.length === 2) flushPendingPair();
+    });
+
+    if (pending.length === 1) {
+      const single = pending.pop();
+      const spreadIndex = pushSpread({
+        kind: "single-inner",
+        pageIndex: single.pageIndex,
+        label: `内页 ${padded(single.innerNumber)}`,
+      });
+      if (!single.unit.demo) {
+        locations[single.unit.id] = {
+          spreadIndex,
+          startInner: single.innerNumber,
+          endInner: single.innerNumber,
+        };
+      }
+    }
+  }
+
+  const backReverseIndex = pushPage({
+    kind: "pure-blank",
+    image: null,
+    label: "封底反面",
+  });
+  pushSpread({
+    kind: "back-reverse",
+    pageIndex: backReverseIndex,
+    label: "封底反面",
+    note: "纯空白",
+  });
+
+  const backCoverIndex = pushPage({
+    kind: "back-cover",
+    image: backFace.image,
+    crop: backFace.crop,
+    label: "封底",
+  });
+  pushSpread({ kind: "back-cover", pageIndex: backCoverIndex, label: "封底" });
+
+  state.physicalPages = physicalPages;
+  state.layoutSpreads = layoutSpreads;
+  state.pages = physicalPages.length;
+  state.pageImages = physicalPages.map((page) => page.image ?? null);
+  state.panoramas = panoramas;
+  state.itemLocations = locations;
+  els.pagesInput.value = state.pages;
+  updatePageCountControls();
+}
+
+function updatePageCountControls() {
+  const automatic = state.interiorItems.length > 0;
+  els.pagesInput.readOnly = automatic;
+  els.pagesInput.title = automatic ? "页数根据内页和跨页大图自动计算" : "";
+  els.pagesMinusButton.disabled = automatic;
+  els.pagesPlusButton.disabled = automatic;
+  els.pagesHelp.textContent = automatic
+    ? "已自动计算：封面 1 页 + 内页内容 + 封底 1 页；跨页大图占 2 页。"
+    : "上传图片后将自动计算总页数。";
+}
+
+function blankPageMarkup(index) {
+  return `
+    <div class="page-fallback blank-page">
+      <span class="fallback-index">PAGE ${String(index + 1).padStart(2, "0")}</span>
+    </div>
+  `;
+}
+
+function artPageMarkup(index) {
+  const pageNumber = index + 1;
+  return `
+    <div class="page-fallback art-page" style="--art-color:${artColors[index % artColors.length]}">
+      <div class="art-shape"></div>
+      <div class="art-circle"></div>
+      <div class="art-copy">
+        <span class="art-kicker">FORM / ${String(pageNumber).padStart(2, "0")}</span>
+        <div class="art-title">${index === 2 ? "留白也是\\n画面的一部分" : "形态与秩序"}</div>
+      </div>
+      <span class="fallback-index">FOLIO COLLECTION — 2026</span>
+    </div>
+  `;
+}
+
+function coverMarkup() {
+  return `
+    <div class="page-fallback cover-page">
+      <div class="cover-field"></div>
+      <div class="cover-orbit"></div>
+      <div class="cover-disc"></div>
+      <div class="cover-copy">
+        <span class="cover-kicker">VISUAL ARCHIVE / VOL. 01</span>
+        <div class="cover-title">${escapeHtml(state.title)}</div>
+        <span class="cover-subtitle">一本关于形态、留白与秩序的书。</span>
+      </div>
+      <div class="cover-footer">
+        <span>FOLIO EDITIONS</span>
+        <span>MMXXVI</span>
+      </div>
+    </div>
+  `;
+}
+
+function backCoverMarkup() {
+  return `
+    <div class="page-fallback back-cover-page">
+      <div class="back-cover-grid" aria-hidden="true"></div>
+      <div class="back-cover-copy">
+        <span>FOLIO EDITIONS / MMXXVI</span>
+        <strong>${escapeHtml(state.title)}</strong>
+        <p>形态、留白与秩序之间的视觉记录。</p>
+      </div>
+      <div class="back-cover-mark" aria-hidden="true">
+        <span>F</span>
+        <i>${String(state.pages).padStart(3, "0")} PAGES</i>
+      </div>
+    </div>
+  `;
+}
+
+function pureBlankPageMarkup() {
+  return '<div class="page-fallback pure-blank-page"></div>';
+}
+
+function pageContent(index, options = {}) {
+  const {
+    includeNumber = true,
+    highResolution = false,
+  } = options;
+  const page = state.physicalPages[index];
+  const image = page?.image ?? null;
+  const pageKind = page?.kind;
+  const crop = page?.crop ?? "";
+  const isCover = pageKind === "front-cover";
+  const isBackCover = pageKind === "back-cover";
+  const objectPosition = crop === "left" ? "left center" : crop === "right" ? "right center" : "center center";
+  let content;
+
+  if (pageKind === "pure-blank") {
+    content = pureBlankPageMarkup();
+  } else if (isCover && !image) {
+    content = coverMarkup();
+  } else if (isBackCover && !image) {
+    content = backCoverMarkup();
+  } else if (image) {
+    content = highResolution
+      ? `
+        <div class="page-media">
+          <canvas class="hd-page-canvas" data-src="${escapeHtml(image.url)}" data-crop="${crop}" aria-label="第 ${index + 1} 页高清预览"></canvas>
+        </div>
+      `
+      : `
+        <div class="page-media">
+          <img src="${escapeHtml(image.url)}" alt="第 ${index + 1} 页图片" style="object-position:${objectPosition}" draggable="false" />
+        </div>
+      `;
+  } else if (index % 3 === 1) {
+    content = blankPageMarkup(index);
+  } else {
+    content = artPageMarkup(index);
+  }
+
+  const margin = state.marginValues;
+  const marginStyle = `top:${(margin.top / state.height) * 100}%;right:${
+    (margin.right / state.width) * 100
+  }%;bottom:${(margin.bottom / state.height) * 100}%;left:${(margin.left / state.width) * 100}%`;
+  const bleedStyle = `top:${(state.bleed / state.height) * 100}%;right:${
+    (state.bleed / state.width) * 100
+  }%;bottom:${(state.bleed / state.height) * 100}%;left:${(state.bleed / state.width) * 100}%`;
+
+  return `
+    ${content}
+    <div class="page-margins" style="${marginStyle}" aria-hidden="true"></div>
+    <div class="bleed-guide" style="${bleedStyle}" aria-hidden="true"></div>
+    <div class="guide-corners" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+    ${includeNumber && pageKind === "inner-page" ? `<span class="page-number">${String(page.innerNumber).padStart(2, "0")}</span>` : ""}
+  `;
+}
+
+function loadImageSource(url) {
+  if (imageCache.has(url)) return imageCache.get(url);
+  const promise = new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = "async";
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = url;
+  });
+  imageCache.set(url, promise);
+  return promise;
+}
+
+function drawHighResolutionCanvases(root) {
+  $$(".hd-page-canvas", root).forEach((canvas) => {
+    const url = canvas.dataset.src;
+    const container = canvas.parentElement;
+    const cssWidth = Math.max(1, Math.round(canvas.clientWidth || container?.clientWidth || 1));
+    const cssHeight = Math.max(1, Math.round(canvas.clientHeight || container?.clientHeight || 1));
+    const isModelCanvas = Boolean(root.closest?.("#modelBook"));
+    const deviceScale = Math.min(2, window.devicePixelRatio || 1);
+    const perspectiveScale = Math.max(
+      0.5,
+      Math.abs(Math.cos((state.modelRotation.y * Math.PI) / 180))
+    );
+    const multiplier = isModelCanvas
+      ? clamp(state.modelZoom * deviceScale * perspectiveScale, 0.75, 4)
+      : state.quality === "halftone"
+        ? 5
+        : state.quality === "high"
+          ? 4
+          : 2.5;
+    const maxDimension = 3800;
+    const scale = Math.min(multiplier, maxDimension / Math.max(cssWidth, cssHeight));
+    canvas.width = Math.max(1, Math.round(cssWidth * scale));
+    canvas.height = Math.max(1, Math.round(cssHeight * scale));
+    const context = canvas.getContext("2d", { alpha: false });
+    if (!context) return;
+    context.fillStyle = "#fbfaf4";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+
+    loadImageSource(url)
+      .then((image) => {
+        if (!canvas.isConnected) return;
+        const scaleMode = canvas.dataset.fit || (state.fillPages ? "cover" : "contain");
+        const sourceRatio = image.naturalWidth / image.naturalHeight;
+        const targetRatio = canvas.width / canvas.height;
+        let drawWidth = canvas.width;
+        let drawHeight = canvas.height;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (scaleMode === "cover") {
+          if (sourceRatio > targetRatio) {
+            drawHeight = canvas.height;
+            drawWidth = drawHeight * sourceRatio;
+          } else {
+            drawWidth = canvas.width;
+            drawHeight = drawWidth / sourceRatio;
+          }
+        } else if (sourceRatio > targetRatio) {
+          drawWidth = canvas.width;
+          drawHeight = drawWidth / sourceRatio;
+        } else {
+          drawHeight = canvas.height;
+          drawWidth = drawHeight * sourceRatio;
+        }
+        const crop = canvas.dataset.crop;
+        offsetX =
+          crop === "left"
+            ? 0
+            : crop === "right"
+              ? canvas.width - drawWidth
+              : (canvas.width - drawWidth) / 2;
+        offsetY = (canvas.height - drawHeight) / 2;
+        context.drawImage(image, offsetX, offsetY, drawWidth, drawHeight);
+      })
+      .catch(() => {
+        canvas.setAttribute("aria-label", "图片加载失败");
+      });
+  });
+}
+
+function scheduleHighResolutionDraw(root) {
+  requestAnimationFrame(() => requestAnimationFrame(() => drawHighResolutionCanvases(root)));
+}
+
+function scheduleModelCanvasRedraw() {
+  if (state.view !== "model") return;
+  window.clearTimeout(modelCanvasRedrawTimer);
+  modelCanvasRedrawTimer = window.setTimeout(() => {
+    scheduleHighResolutionDraw(els.modelBook);
+    scheduleHighResolutionDraw(els.modelFlipLeaf);
+  }, 120);
+}
+
+function spreadCount() {
+  return state.layoutSpreads.length;
+}
+
+function pagesForSpread(spreadIndex) {
+  const spread = state.layoutSpreads[spreadIndex];
+  if (!spread) return { left: null, right: null };
+  if (spread.kind === "inner-spread" || spread.kind === "panorama") {
+    return { left: spread.leftPageIndex, right: spread.rightPageIndex };
+  }
+  return state.binding === "right"
+    ? { left: spread.pageIndex, right: null }
+    : { left: null, right: spread.pageIndex };
+}
+
+function visualPair(pair) {
+  if (state.binding !== "right" || pair.left === null || pair.right === null) return pair;
+  return { left: pair.right, right: pair.left };
+}
+
+function spreadPairLabel(spreadIndex) {
+  return state.layoutSpreads[spreadIndex]?.label ?? "页面";
+}
+
+function isClosedSpread(spreadIndex) {
+  const pair = pagesForSpread(spreadIndex);
+  return pair.left === null || pair.right === null;
+}
+
+function setBookDimensions() {
+  const stageRect = els.stage.getBoundingClientRect();
+  const ratio = state.width / state.height;
+  const availableWidth = Math.max(250, stageRect.width - 180);
+  const availableHeight = Math.max(240, stageRect.height - 130);
+
+  let width;
+  let height;
+  if (state.spreadMode && !isClosedSpread(state.currentSpread)) {
+    width = Math.min(availableWidth, availableHeight * ratio * 2);
+    height = width / (ratio * 2);
+  } else {
+    width = Math.min(availableWidth * 0.72, availableHeight * ratio);
+    height = width / ratio;
+  }
+  if (height > availableHeight * 0.93) {
+    height = availableHeight * 0.93;
+    width = height * ratio * (state.spreadMode && !isClosedSpread(state.currentSpread) ? 2 : 1);
+  }
+
+  const renderedWidth = Math.round(width / 2) * 2;
+  const renderedHeight = Math.round(height);
+  els.bookScene.style.setProperty("--book-width", `${renderedWidth}px`);
+  els.bookScene.style.setProperty("--book-height", `${renderedHeight}px`);
+  els.book.style.setProperty("--book-width", `${renderedWidth}px`);
+  els.book.style.setProperty("--book-height", `${renderedHeight}px`);
+
+  const fitZoom = state.zoom === "fit" ? 1 : state.zoom;
+  els.bookScene.style.setProperty("--zoom", fitZoom);
+  els.zoomLabel.textContent = state.zoom === "fit" ? "适合" : `${Math.round(state.zoom * 100)}%`;
+}
+
+function panoramaForSpread(spreadIndex) {
+  return state.panoramas[spreadIndex] ?? null;
+}
+
+function renderPanoramaLayer(layer, spreadIndex) {
+  const panorama = panoramaForSpread(spreadIndex);
+  if (!panorama || spreadIndex === 0 || spreadIndex === spreadCount() - 1) {
+    layer.hidden = true;
+    layer.replaceChildren();
+    return;
+  }
+  layer.hidden = false;
+  layer.innerHTML = `<canvas class="hd-page-canvas" data-src="${escapeHtml(
+    panorama.url
+  )}" aria-label="跨页大图预览"></canvas>`;
+  scheduleHighResolutionDraw(layer);
+}
+
+function renderBook(animate = false, direction = "next") {
+  if (state.isFlipping) return;
+  const pair = pagesForSpread(state.currentSpread);
+  const orderedPair = visualPair(pair);
+  const currentSpread = state.layoutSpreads[state.currentSpread];
+  const isCover = currentSpread?.kind === "front-cover";
+  const isBackCover = currentSpread?.kind === "back-cover";
+  const isSingle = !state.spreadMode && !isClosedSpread(state.currentSpread);
+  els.book.classList.toggle("is-cover", isCover);
+  els.book.classList.toggle("is-back-cover", isBackCover);
+  els.book.classList.toggle("is-single", isSingle);
+  els.book.classList.toggle("binding-right", state.binding === "right");
+  els.book.dataset.spread = state.currentSpread;
+  const displayPair =
+    isSingle && !isClosedSpread(state.currentSpread)
+      ? { left: null, right: orderedPair.right ?? orderedPair.left }
+      : orderedPair;
+  els.book.classList.toggle("is-left-only", displayPair.left !== null && displayPair.right === null);
+  els.book.classList.toggle("is-right-only", displayPair.left === null && displayPair.right !== null);
+  els.bookPageLeftContent = displayPair.left;
+  els.bookPageRightContent = displayPair.right;
+
+  const renderInto = (element, index) => {
+    element.dataset.pageIndex = index ?? "";
+    if (index === null || index >= state.pages) {
+      element.innerHTML = '<div class="page-fallback blank-page"></div>';
+      return;
+    }
+    element.innerHTML = pageContent(index, { highResolution: true });
+  };
+
+  if (!animate) {
+    renderInto(els.leftPage, displayPair.left);
+    renderInto(els.rightPage, displayPair.right);
+    renderPanoramaLayer(els.panoramaLayer, state.currentSpread);
+    scheduleHighResolutionDraw(els.book);
+    updateBookDecorations();
+    setBookDimensions();
+    return;
+  }
+
+  state.isFlipping = true;
+  const sourcePair = pagesForSpread(
+    clamp(state.currentSpread + (direction === "next" ? -1 : 1), 0, spreadCount() - 1)
+  );
+  const outgoingPage =
+    direction === "next" ? sourcePair.right ?? sourcePair.left : sourcePair.left ?? sourcePair.right;
+  const incomingPage =
+    direction === "next" ? pair.left ?? pair.right : pair.right ?? pair.left;
+  els.flipFront.innerHTML = pageContent(outgoingPage ?? 0);
+  els.flipBack.innerHTML = pageContent(incomingPage ?? 0);
+  const flipStyle = state.binding === "right" ? `rtl-${direction}` : `flip-${direction}`;
+  els.flipLeaf.className = `flip-leaf is-flipping ${flipStyle}`;
+  scheduleHighResolutionDraw(els.flipLeaf);
+
+  window.setTimeout(() => {
+    renderInto(els.leftPage, displayPair.left);
+    renderInto(els.rightPage, displayPair.right);
+    renderPanoramaLayer(els.panoramaLayer, state.currentSpread);
+    scheduleHighResolutionDraw(els.book);
+    updateBookDecorations();
+    setBookDimensions();
+  }, 250);
+
+  els.flipLeaf.addEventListener(
+    "animationend",
+    () => {
+      els.flipLeaf.className = "flip-leaf";
+      state.isFlipping = false;
+    },
+    { once: true }
+  );
+}
+
+function setModelDimensions() {
+  const rect = els.modelView.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  const ratio = state.width / state.height;
+  const isSinglePage = isClosedSpread(state.currentSpread) || !state.spreadMode;
+  const availableWidth = Math.max(220, rect.width * 0.66);
+  const availableHeight = Math.max(220, rect.height - 160);
+  let width;
+  let height;
+
+  if (isSinglePage) {
+    width = Math.min(availableWidth * 0.78, availableHeight * ratio);
+    height = width / ratio;
+  } else {
+    width = Math.min(availableWidth, availableHeight * ratio * 2);
+    height = width / (ratio * 2);
+  }
+
+  const pageWidth = isSinglePage ? width : width / 2;
+  const pixelsPerMillimeter = pageWidth / state.width;
+  const sheetCount = Math.ceil(state.pages / 2);
+  const paperThicknessMm = sheetCount * 0.12 + 1.2;
+  const depth = clamp(paperThicknessMm * pixelsPerMillimeter, 4, 48);
+  els.modelBook.style.setProperty("--model-width", `${Math.round(width / 2) * 2}px`);
+  els.modelBook.style.setProperty("--model-book-height", `${Math.round(height)}px`);
+  els.modelStage.style.setProperty("--model-cover-ratio", state.width / state.height);
+  els.modelBook.style.setProperty("--model-depth", `${depth.toFixed(1)}px`);
+  els.modelThicknessInfo.textContent = `${state.pages} 页 · ${sheetCount} 张纸 · 约 ${paperThicknessMm.toFixed(
+    1
+  )} mm`;
+}
+
+function renderModelCoverPreviews() {
+  const faces = [
+    ["front", els.modelFrontCoverPreviewCanvas],
+    ["back", els.modelBackCoverPreviewCanvas],
+  ];
+  faces.forEach(([face, container]) => {
+    const source = coverFaceSource(face);
+    if (!source.image) {
+      container.innerHTML = face === "front" ? coverMarkup() : backCoverMarkup();
+      return;
+    }
+    container.innerHTML = `<canvas class="hd-page-canvas" data-src="${escapeHtml(
+      source.image.url
+    )}" data-crop="${source.crop ?? ""}" data-fit="contain" aria-label="${
+      face === "front" ? "封面预览" : "封底预览"
+    }"></canvas>`;
+  });
+  scheduleHighResolutionDraw(els.modelFrontCoverPreview);
+  scheduleHighResolutionDraw(els.modelBackCoverPreview);
+}
+
+function updateModelTransform() {
+  els.modelBook.style.setProperty("--model-rot-x", `${state.modelRotation.x}deg`);
+  els.modelBook.style.setProperty("--model-rot-y", `${state.modelRotation.y}deg`);
+  els.modelBook.style.setProperty("--model-zoom", state.modelZoom);
+  const normalizedY = ((state.modelRotation.y % 360) + 360) % 360;
+  els.modelBook.classList.toggle(
+    "show-back-cover",
+    normalizedY > 82 && normalizedY < 278
+  );
+  scheduleModelCanvasRedraw();
+}
+
+function renderModel(animate = false, direction = "next") {
+  const pair = pagesForSpread(state.currentSpread);
+  const orderedPair = visualPair(pair);
+  const currentSpread = state.layoutSpreads[state.currentSpread];
+  const isCover = currentSpread?.kind === "front-cover";
+  const isBackCover = currentSpread?.kind === "back-cover";
+  const isSingle = !state.spreadMode && !isClosedSpread(state.currentSpread);
+  const displayPair =
+    isSingle && !isClosedSpread(state.currentSpread)
+      ? { left: null, right: orderedPair.right ?? orderedPair.left }
+      : orderedPair;
+
+  els.modelBook.classList.toggle("is-cover", isCover);
+  els.modelBook.classList.toggle("is-back-cover", isBackCover);
+  els.modelBook.classList.toggle("is-single", isSingle);
+  els.modelBook.classList.toggle("binding-right", state.binding === "right");
+  els.modelBook.classList.toggle(
+    "is-left-only",
+    displayPair.left !== null && displayPair.right === null
+  );
+  els.modelBook.classList.toggle(
+    "is-right-only",
+    displayPair.left === null && displayPair.right !== null
+  );
+
+  const renderInto = (element, index) => {
+    element.dataset.pageIndex = index ?? "";
+    if (index === null || index >= state.pages) {
+      element.innerHTML = '<div class="page-fallback blank-page"></div>';
+      return;
+    }
+    element.innerHTML = pageContent(index, { highResolution: true });
+  };
+
+  const renderTargetPages = () => {
+    renderInto(els.modelLeftPage, displayPair.left);
+    renderInto(els.modelRightPage, displayPair.right);
+    renderPanoramaLayer(els.modelPanoramaLayer, state.currentSpread);
+    const backIndex = state.pages - 1;
+    const backPage = state.physicalPages[backIndex];
+    const backImage = backPage?.image ?? null;
+    els.modelBackCoverContent.innerHTML = backImage
+      ? `<div class="page-media"><canvas class="hd-page-canvas" data-src="${escapeHtml(
+          backImage.url
+        )}" data-crop="${backPage?.crop ?? ""}" aria-label="封底高清预览"></canvas></div>`
+      : backCoverMarkup();
+    renderModelCoverPreviews();
+    setModelDimensions();
+    updateModelTransform();
+    scheduleHighResolutionDraw(els.modelBook);
+  };
+
+  if (!animate || !state.spreadMode || state.isFlipping) {
+    renderTargetPages();
+    return;
+  }
+
+  state.isFlipping = true;
+  const sourcePair = pagesForSpread(
+    clamp(state.currentSpread + (direction === "next" ? -1 : 1), 0, spreadCount() - 1)
+  );
+  const outgoingPage =
+    direction === "next" ? sourcePair.right ?? sourcePair.left : sourcePair.left ?? sourcePair.right;
+  const incomingPage =
+    direction === "next" ? pair.left ?? pair.right : pair.right ?? pair.left;
+  els.modelFlipFront.innerHTML = pageContent(outgoingPage ?? 0, { highResolution: true });
+  els.modelFlipBack.innerHTML = pageContent(incomingPage ?? 0, { highResolution: true });
+  scheduleHighResolutionDraw(els.modelFlipLeaf);
+  const flipStyle = state.binding === "right" ? `rtl-${direction}` : `flip-${direction}`;
+  els.modelFlipLeaf.className = `flip-leaf model-flip-leaf is-flipping ${flipStyle}`;
+
+  window.setTimeout(renderTargetPages, 250);
+  els.modelFlipLeaf.addEventListener(
+    "animationend",
+    () => {
+      els.modelFlipLeaf.className = "flip-leaf model-flip-leaf";
+      state.isFlipping = false;
+    },
+    { once: true }
+  );
+}
+
+function updateBookDecorations() {
+  els.book.classList.toggle("fill-pages", state.fillPages);
+  els.book.classList.toggle("paper-texture", state.texture);
+  els.book.classList.toggle("guides-visible", state.guides);
+  els.book.classList.toggle("reference-visible", state.margins);
+  els.book.classList.toggle("quality-standard", state.quality === "standard");
+  els.book.classList.toggle("quality-high", state.quality === "high");
+  els.book.classList.toggle("quality-halftone", state.quality === "halftone");
+  els.bookScene.classList.toggle("binding-right", state.binding === "right");
+  els.footerNav.classList.toggle("binding-right", state.binding === "right");
+  els.modelBook.classList.toggle("fill-pages", state.fillPages);
+  els.modelBook.classList.toggle("paper-texture", state.texture);
+  els.modelBook.classList.toggle("guides-visible", state.guides);
+  els.modelBook.classList.toggle("reference-visible", state.margins);
+  els.modelBook.classList.toggle("quality-standard", state.quality === "standard");
+  els.modelBook.classList.toggle("quality-high", state.quality === "high");
+  els.modelBook.classList.toggle("quality-halftone", state.quality === "halftone");
+  els.modelBook.classList.toggle(
+    "is-single",
+    !state.spreadMode && !isClosedSpread(state.currentSpread)
+  );
+  const hasPrevious = state.currentSpread > 0;
+  const hasNext = state.currentSpread < spreadCount() - 1;
+  els.prevZone.classList.toggle("is-disabled", !hasPrevious);
+  els.nextZone.classList.toggle("is-disabled", !hasNext);
+  els.prevButton.disabled = !hasPrevious;
+  els.nextButton.disabled = !hasNext;
+  els.viewerPrevButton.disabled = !hasPrevious;
+  els.viewerNextButton.disabled = !hasNext;
+  els.progressBar.style.width = `${((state.currentSpread + 1) / spreadCount()) * 100}%`;
+  els.flipNavIndex.textContent = `${String(state.currentSpread + 1).padStart(2, "0")} / ${String(
+    spreadCount()
+  ).padStart(2, "0")}`;
+  els.flipNav.hidden = state.view === "overview";
+  const currentSpread = state.layoutSpreads[state.currentSpread];
+  els.currentSpreadLabel.textContent = spreadPairLabel(state.currentSpread);
+  els.currentPageLabel.textContent = currentSpread?.note
+    ? currentSpread.note
+    : currentSpread?.kind === "inner-spread" || currentSpread?.kind === "panorama"
+      ? "跨页预览"
+      : currentSpread?.kind === "single-inner"
+        ? "单页预览"
+        : "书页预览";
+  updateSpreadAssetStatus();
+}
+
+function goToSpread(index, options = {}) {
+  const { animate = true } = options;
+  const target = clamp(index, 0, spreadCount() - 1);
+  if (target === state.currentSpread || state.isFlipping) return;
+  const direction = target > state.currentSpread ? "next" : "prev";
+  state.currentSpread = target;
+  if (state.view === "model") {
+    state.modelRotation = { x: -8, y: -17 };
+    updateModelTransform();
+    renderModel(animate, direction);
+    renderBook(false);
+  } else {
+    renderBook(animate && state.spreadMode, direction);
+    renderModel(false);
+  }
+  renderPageList();
+  updateBookDecorations();
+  updatePresentation();
+}
+
+function nextSpread() {
+  goToSpread(state.currentSpread + 1);
+}
+
+function prevSpread() {
+  goToSpread(state.currentSpread - 1);
+}
+
+function buildPageList() {
+  const list = [];
+  const pageThumbHeight = clamp((54 * state.height) / state.width, 36, 72);
+  const frontPage = state.physicalPages[0];
+  const backPage = state.physicalPages[state.pages - 1];
+  const coverImage = frontPage?.image ?? null;
+  const backCoverImage = backPage?.image ?? null;
+  const coverPosition = frontPage?.crop === "right" ? "right center" : "center center";
+  const backPosition = backPage?.crop === "left" ? "left center" : "center center";
+  const coverThumbMarkup = coverImage
+    ? `<img src="${coverImage.url}" alt="" style="object-position:${coverPosition}" />`
+    : '<div class="page-fallback cover-page" style="position:relative;width:100%;height:100%;transform:scale(.45)"></div>';
+  const backThumbMarkup = backCoverImage
+    ? `<img src="${backCoverImage.url}" alt="" style="object-position:${backPosition}" />`
+    : '<div class="page-fallback back-cover-page" style="position:relative;width:100%;height:100%"><div class="back-cover-grid"></div></div>';
+
+  list.push(`
+    <div class="page-list-tip">
+      <span>拖动缩略图调整顺序</span>
+      <span>跨页大图占 2 页</span>
+    </div>
+  `);
+
+  list.push(`
+    <div class="page-thumb ${state.currentSpread === 0 ? "active" : ""} fixed-page" data-page-kind="cover" data-page="0">
+      <div class="thumb-paper" style="height:${pageThumbHeight}px" aria-hidden="true">${coverThumbMarkup}</div>
+      <div class="thumb-copy">
+        <strong>封面</strong>
+        <span>${coverImage ? "COVER IMAGE" : "GENERATED"}</span>
+      </div>
+      <span class="thumb-number">1</span>
+      ${
+        state.coverImage
+          ? '<button class="asset-remove page-remove" type="button" data-remove-cover="front" aria-label="移除封面图片">×</button>'
+          : ""
+      }
+    </div>
+  `);
+
+  if (state.interiorItems.length) {
+    state.interiorItems.forEach((item, itemIndex) => {
+      const location = state.itemLocations[item.id] ?? {};
+      const active = state.currentSpread === location.spreadIndex;
+      if (item.type === "panorama") {
+        list.push(`
+          <div class="page-thumb panorama-thumb ${active ? "active" : ""}" data-item-index="${itemIndex}" data-item-id="${item.id}" draggable="true" title="${escapeHtml(item.image.name)}">
+            <div class="panorama-thumb-paper" aria-hidden="true">
+              <img src="${escapeHtml(item.image.url)}" alt="" />
+              <span class="panorama-fold"></span>
+            </div>
+            <div class="thumb-copy">
+              <strong>跨页大图</strong>
+              <span>内页 ${String(location.startInner ?? "–").padStart(2, "0")}–${String(
+                location.endInner ?? "–"
+              ).padStart(2, "0")}</span>
+            </div>
+            <span class="thumb-drag" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <button class="asset-remove page-remove" type="button" data-remove-item="${item.id}" aria-label="移除跨页大图">×</button>
+          </div>
+        `);
+        return;
+      }
+
+      list.push(`
+        <div class="page-thumb ${active ? "active" : ""}" data-item-index="${itemIndex}" data-item-id="${item.id}" draggable="true" title="${escapeHtml(item.image.name)}">
+          <div class="thumb-paper" style="height:${pageThumbHeight}px" aria-hidden="true">
+            <img src="${escapeHtml(item.image.url)}" alt="" />
+          </div>
+          <div class="thumb-copy">
+            <strong>内页 ${String(location.startInner ?? "–").padStart(2, "0")}</strong>
+            <span>IMAGE PAGE</span>
+          </div>
+          <span class="thumb-number">${location.startInner ?? "–"}</span>
+          <span class="thumb-drag" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <button class="asset-remove page-remove" type="button" data-remove-item="${item.id}" aria-label="移除内页图片">×</button>
+        </div>
+      `);
+    });
+  } else {
+    for (let spreadIndex = 2; spreadIndex < spreadCount() - 2; spreadIndex += 1) {
+      const spread = state.layoutSpreads[spreadIndex];
+      list.push(`
+        <div class="page-thumb ${state.currentSpread === spreadIndex ? "active" : ""}" data-page-kind="demo-spread" data-spread-index="${spreadIndex}">
+          <div class="thumb-paper" style="height:${pageThumbHeight}px" aria-hidden="true">
+            <div class="page-fallback blank-page"></div>
+          </div>
+          <div class="thumb-copy">
+            <strong>${spread.label}</strong>
+            <span>${spread.kind === "inner-spread" ? "SPREAD" : "SINGLE"}</span>
+          </div>
+          <span class="thumb-number">–</span>
+        </div>
+      `);
+    }
+  }
+
+  list.push(`
+    <div class="page-thumb ${state.currentSpread === spreadCount() - 1 ? "active" : ""} fixed-page" data-page-kind="back" data-page="${state.pages - 1}">
+      <div class="thumb-paper" style="height:${pageThumbHeight}px" aria-hidden="true">${backThumbMarkup}</div>
+      <div class="thumb-copy">
+        <strong>封底</strong>
+        <span>${backCoverImage ? "BACK COVER" : "GENERATED"}</span>
+      </div>
+      <span class="thumb-number">${state.pages}</span>
+      ${
+        state.backCoverImage
+          ? '<button class="asset-remove page-remove" type="button" data-remove-cover="back" aria-label="移除封底图片">×</button>'
+          : ""
+      }
+    </div>
+  `);
+  return list.join("");
+}
+
+function renderPageList() {
+  els.pageList.innerHTML = buildPageList();
+  els.pageCountBadge.textContent = `${state.pages} 页`;
+  bindPageDrag();
+}
+
+function renderAssetStrip() {
+  if (!state.images.length) {
+    els.assetStrip.innerHTML = '<p class="asset-empty">上传后，图片会出现在这里</p>';
+  } else {
+    els.assetStrip.innerHTML = state.images
+      .map(
+        (image, index) => `
+          <span class="asset-thumb" title="${escapeHtml(image.name)}">
+            <img src="${escapeHtml(image.url)}" alt="素材 ${index + 1}" />
+            <button class="asset-remove" type="button" data-remove-item="${image.id}" aria-label="移除${escapeHtml(
+              image.name
+            )}">×</button>
+          </span>
+        `
+      )
+      .join("");
+  }
+  const panoramaCount = state.interiorItems.filter((item) => item.type === "panorama").length;
+  els.assetCount.textContent = `${state.images.length} 张${
+    panoramaCount ? ` · ${panoramaCount} 跨页` : ""
+  }`;
+  const previewMarkup = (image) =>
+    image
+      ? `<img src="${escapeHtml(image.url)}" alt="" />`
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>';
+  els.coverPreview.innerHTML = previewMarkup(state.coverImage);
+  els.backCoverPreview.innerHTML = previewMarkup(state.backCoverImage);
+  els.wrapCoverPreview.innerHTML = previewMarkup(state.wrapCoverImage);
+  els.removeCoverButton.hidden = !state.coverImage;
+  els.removeBackCoverButton.hidden = !state.backCoverImage;
+  els.removeWrapCoverButton.hidden = !state.wrapCoverImage;
+  els.fileStatus.textContent = state.interiorItems.length
+    ? `${state.images.length} 张内页${panoramaCount ? ` + ${panoramaCount} 张跨页大图` : ""} · 仅保存在本地`
+    : "所有内容仅保存在本地";
+  updateSpreadAssetStatus();
+}
+
+function updateSpreadAssetStatus() {
+  const panorama = panoramaForSpread(state.currentSpread);
+  if (panorama) {
+    els.spreadAssetStatus.textContent = `当前跨页：${spreadPairLabel(state.currentSpread)}`;
+    els.spreadUploadButton.classList.add("has-panorama");
+  } else {
+    els.spreadAssetStatus.textContent = "上传后加入内页队列";
+    els.spreadUploadButton.classList.remove("has-panorama");
+  }
+}
+
+function renderOverview() {
+  const ratio = state.width / state.height;
+  const items = [];
+  for (let spread = 0; spread < spreadCount(); spread += 1) {
+    const spreadDescriptor = state.layoutSpreads[spread];
+    const pair = visualPair(pagesForSpread(spread));
+    const isCover = spreadDescriptor?.kind === "front-cover";
+    const isBackCover = spreadDescriptor?.kind === "back-cover";
+    const isClosed = pair.left === null || pair.right === null;
+    const pages = [pair.left, pair.right].filter((page) => page !== null && page < state.pages);
+    items.push(`
+      <div class="overview-spread" data-spread="${spread}" role="button" tabindex="0" aria-label="查看${spreadPairLabel(spread)}">
+        <div class="overview-paper ${isClosed ? "is-closed" : ""} ${isCover ? "is-cover" : ""} ${isBackCover ? "is-back-cover" : ""}">
+          ${pages
+            .map((page) => {
+              const image = pageImageAt(page);
+              const pageData = state.physicalPages[page];
+              const objectPosition =
+                pageData?.crop === "left"
+                  ? "left center"
+                  : pageData?.crop === "right"
+                    ? "right center"
+                    : "center center";
+              const pageKind = state.physicalPages[page]?.kind;
+              const fallback =
+                pageKind === "front-cover"
+                  ? coverMarkup()
+                  : pageKind === "back-cover"
+                    ? backCoverMarkup()
+                    : pageKind === "pure-blank"
+                      ? pureBlankPageMarkup()
+                      : page % 3 === 1
+                        ? blankPageMarkup(page)
+                        : artPageMarkup(page);
+              return `<div class="overview-page" style="--page-ratio:${ratio}">${
+                image
+                  ? `<img src="${image.url}" alt="第 ${page + 1} 页" style="object-position:${objectPosition}" />`
+                  : fallback
+              }</div>`;
+            })
+            .join("")}
+        </div>
+        <div class="overview-meta">
+          <strong>${spreadPairLabel(spread)}</strong>
+          <span>${isCover ? "FRONT COVER" : isBackCover ? "BACK COVER" : `SPREAD ${String(spread).padStart(2, "0")}`}</span>
+        </div>
+      </div>
+    `);
+  }
+  els.spreadGrid.innerHTML = items.join("");
+}
+
+function renderAll(options = {}) {
+  const { preserveSpread = false } = options;
+  syncPageSlots();
+  state.currentSpread = preserveSpread ? clamp(state.currentSpread, 0, spreadCount() - 1) : 0;
+  renderBook(false);
+  renderModel(false);
+  renderPageList();
+  renderAssetStrip();
+  renderOverview();
+  updateBookDecorations();
+  updatePresentation();
+  updateRatio();
+}
+
+function updateRatio() {
+  const ratio = state.width / state.height;
+  const divisor = gcd(state.width, state.height);
+  const ratioW = Math.round(state.width / divisor);
+  const ratioH = Math.round(state.height / divisor);
+  els.ratioLabel.textContent = ratioW <= 20 && ratioH <= 20 ? `${ratioW} : ${ratioH}` : ratio.toFixed(2);
+}
+
+function gcd(a, b) {
+  let x = Math.abs(Math.round(a));
+  let y = Math.abs(Math.round(b));
+  while (y) [x, y] = [y, x % y];
+  return x || 1;
+}
+
+function updatePresentation() {
+  els.presentationCounter.textContent = `${state.currentSpread + 1} / ${spreadCount()}`;
+  els.presentationTitle.textContent = state.title;
+}
+
+function applyPresentationBookSize(book = els.presentationStage.querySelector(".book")) {
+  if (!book) return;
+  const stageRect = els.presentationStage.getBoundingClientRect();
+  const availableWidth = Math.max(280, stageRect.width - 32);
+  const availableHeight = Math.max(220, stageRect.height - 28);
+  const ratio = state.width / state.height;
+  const pair = visualPair(pagesForSpread(state.currentSpread));
+  const isSpread = pair.left !== null && pair.right !== null;
+  let width;
+  let height;
+
+  if (isSpread) {
+    width = Math.min(availableWidth, availableHeight * ratio * 2);
+    height = width / (ratio * 2);
+  } else {
+    width = Math.min(availableWidth, availableHeight * ratio);
+    height = width / ratio;
+  }
+
+  book.style.setProperty("--book-width", `${Math.floor(width / 2) * 2}px`);
+  book.style.setProperty("--book-height", `${Math.floor(height)}px`);
+}
+
+function enterPresentation() {
+  if (state.presentation) return;
+  state.presentation = true;
+  els.presentationOverlay.hidden = false;
+  const isCover = state.layoutSpreads[state.currentSpread]?.kind === "front-cover";
+  const presentationPair = visualPair(pagesForSpread(state.currentSpread));
+  const leftOnly = presentationPair.left !== null && presentationPair.right === null;
+  const rightOnly = presentationPair.left === null && presentationPair.right !== null;
+  els.presentationStage.innerHTML = `
+    <div class="book ${isCover ? "is-cover" : ""} ${leftOnly ? "is-left-only" : ""} ${rightOnly ? "is-right-only" : ""} ${state.fillPages ? "fill-pages" : ""} ${state.texture ? "paper-texture" : ""} ${state.margins ? "reference-visible" : ""} quality-${state.quality}"
+      >
+      <div class="book-page book-page-left">${
+        presentationPair.left !== null ? pageContent(presentationPair.left) : ""
+      }</div>
+      <div class="book-page book-page-right">${pageContent(presentationPair.right ?? 0)}</div>
+      <div class="book-spine" aria-hidden="true"></div>
+      <div class="edge edge-top"></div>
+      <div class="edge edge-bottom"></div>
+    </div>
+  `;
+  const book = els.presentationStage.querySelector(".book");
+  book?.classList.add("presentation-book");
+  applyPresentationBookSize(book);
+  updatePresentation();
+}
+
+function updatePresentationContent() {
+  if (!state.presentation) return;
+  const pair = visualPair(pagesForSpread(state.currentSpread));
+  const book = els.presentationStage.querySelector(".book");
+  if (!book) return;
+  const cover = state.layoutSpreads[state.currentSpread]?.kind === "front-cover";
+  book.classList.toggle("is-cover", cover);
+  book.classList.toggle("is-left-only", pair.left !== null && pair.right === null);
+  book.classList.toggle("is-right-only", pair.left === null && pair.right !== null);
+  $(".book-page-left", book).innerHTML = pair.left !== null ? pageContent(pair.left) : "";
+  $(".book-page-right", book).innerHTML = pageContent(pair.right ?? 0);
+  applyPresentationBookSize(book);
+  updatePresentation();
+}
+
+function exitPresentation() {
+  state.presentation = false;
+  els.presentationOverlay.hidden = true;
+  els.presentationStage.innerHTML = "";
+}
+
+function setView(view) {
+  state.view = view;
+  $$(".view-tab").forEach((tab) => tab.classList.toggle("active", tab.dataset.view === view));
+  els.flipView.hidden = view !== "flip";
+  els.modelView.hidden = view !== "model";
+  els.overviewView.hidden = view !== "overview";
+  els.detailLoupe.classList.remove("visible");
+  if (view === "overview") renderOverview();
+  if (view === "flip") requestAnimationFrame(setBookDimensions);
+  if (view === "model") {
+    requestAnimationFrame(() => {
+      setModelDimensions();
+      renderModel(false);
+    });
+  }
+  updateBookDecorations();
+}
+
+function setZoom(zoom) {
+  state.zoom = zoom === "fit" ? "fit" : clamp(zoom, 0.35, 2.2);
+  setBookDimensions();
+}
+
+function setPageCount(next) {
+  if (state.interiorItems.length) {
+    els.pagesInput.value = state.pages;
+    showToast("上传内容后，总页数会根据内页与跨页大图自动计算");
+    return;
+  }
+  const sanitized = clamp(Math.round(Number(next) || 4), 4, 200);
+  state.pages = sanitized;
+  els.pagesInput.value = sanitized;
+  syncPageSlots();
+  state.currentSpread = clamp(state.currentSpread, 0, spreadCount() - 1);
+  renderAll({ preserveSpread: true });
+}
+
+function setDimensions(width, height) {
+  state.width = clamp(Math.round(Number(width) || 1), 50, 1000);
+  state.height = clamp(Math.round(Number(height) || 1), 50, 1000);
+  els.widthInput.value = state.width;
+  els.heightInput.value = state.height;
+  updateRatio();
+  renderBook(false);
+  renderModel(false);
+  renderOverview();
+}
+
+function setPreset(preset) {
+  state.preset = preset;
+  $$(".preset-card").forEach((card) => card.classList.toggle("active", card.dataset.preset === preset));
+  if (presetSizes[preset]) {
+    setDimensions(presetSizes[preset].width, presetSizes[preset].height);
+  }
+}
+
+function applyBindingButtonOrder() {
+  const progress = $(".page-progress", els.footerNav);
+  if (state.binding === "right") {
+    els.flipNav.append(els.viewerNextButton, els.flipNavIndex, els.viewerPrevButton);
+    els.footerNav.append(
+      els.firstButton,
+      els.nextButton,
+      progress,
+      els.prevButton,
+      els.lastButton
+    );
+  } else {
+    els.flipNav.append(els.viewerPrevButton, els.flipNavIndex, els.viewerNextButton);
+    els.footerNav.append(
+      els.firstButton,
+      els.prevButton,
+      progress,
+      els.nextButton,
+      els.lastButton
+    );
+  }
+  els.flipNav.classList.toggle("binding-right", state.binding === "right");
+}
+
+function setBinding(binding) {
+  state.binding = binding === "right" ? "right" : "left";
+  $$(".binding-card").forEach((card) =>
+    card.classList.toggle("active", card.dataset.binding === state.binding)
+  );
+  applyBindingButtonOrder();
+  syncPageSlots();
+  renderBook(false);
+  renderModel(false);
+  renderPageList();
+  renderOverview();
+  updateBookDecorations();
+  showToast(state.binding === "right" ? "已切换为右开本" : "已切换为左开本");
+}
+
+function setQuality(quality) {
+  state.quality = ["standard", "high", "halftone"].includes(quality) ? quality : "high";
+  $$(".quality-control button").forEach((button) =>
+    button.classList.toggle("active", button.dataset.quality === state.quality)
+  );
+  const help = {
+    standard: "流畅浏览模式，适合页数较多时快速翻页。",
+    high: "保留原图像素并以高质量采样显示，适合漫画与线稿。",
+    halftone: "关闭干扰纹理并优先保留硬边；悬停页面可使用 4× 网点检查。建议原图达到 60 线所需的高分辨率扫描。",
+  };
+  els.qualityHelp.textContent = help[state.quality];
+  els.detailLoupe.classList.remove("visible");
+  renderBook(false);
+  renderModel(false);
+  updateBookDecorations();
+}
+
+function updateReferenceLines() {
+  state.marginValues = {
+    top: clamp(Number(els.marginTopInput.value) || 0, 0, Math.min(100, state.height / 2)),
+    right: clamp(Number(els.marginRightInput.value) || 0, 0, Math.min(100, state.width / 2)),
+    bottom: clamp(Number(els.marginBottomInput.value) || 0, 0, Math.min(100, state.height / 2)),
+    left: clamp(Number(els.marginLeftInput.value) || 0, 0, Math.min(100, state.width / 2)),
+  };
+  state.bleed = clamp(Number(els.bleedInput.value) || 0, 0, 25);
+  state.margins = true;
+  els.marginsToggle.checked = true;
+  applyReferenceGuideStyles();
+  updateBookDecorations();
+}
+
+function applyReferenceGuideStyles() {
+  const margin = state.marginValues;
+  const marginValues = {
+    top: `${(margin.top / state.height) * 100}%`,
+    right: `${(margin.right / state.width) * 100}%`,
+    bottom: `${(margin.bottom / state.height) * 100}%`,
+    left: `${(margin.left / state.width) * 100}%`,
+  };
+  const bleedValues = {
+    top: `${(state.bleed / state.height) * 100}%`,
+    right: `${(state.bleed / state.width) * 100}%`,
+    bottom: `${(state.bleed / state.height) * 100}%`,
+    left: `${(state.bleed / state.width) * 100}%`,
+  };
+  $$(".page-margins").forEach((guide) => {
+    Object.entries(marginValues).forEach(([property, value]) =>
+      guide.style.setProperty(property, value)
+    );
+  });
+  $$(".bleed-guide").forEach((guide) => {
+    Object.entries(bleedValues).forEach(([property, value]) =>
+      guide.style.setProperty(property, value)
+    );
+  });
+}
+
+function hideLoupe() {
+  els.detailLoupe.classList.remove("visible");
+  els.detailLoupeImage.replaceChildren();
+}
+
+function updateLoupe(event) {
+  if (state.quality !== "halftone" || state.view === "overview") {
+    hideLoupe();
+    return;
+  }
+  const pageElement = event.target.closest?.(".book-page");
+  if (!pageElement || els.modelStage.classList.contains("is-dragging")) {
+    hideLoupe();
+    return;
+  }
+  const pageIndex = Number(pageElement.dataset.pageIndex);
+  const image = Number.isFinite(pageIndex) ? pageImageAt(pageIndex) : null;
+  if (!image) {
+    hideLoupe();
+    return;
+  }
+
+  const pageRect = pageElement.getBoundingClientRect();
+  const stageRect = els.stage.getBoundingClientRect();
+  const relativeX = (event.clientX - pageRect.left) / Math.max(1, pageRect.width);
+  const relativeY = (event.clientY - pageRect.top) / Math.max(1, pageRect.height);
+  const zoom = 4;
+  const imageWidth = Math.max(1, pageRect.width * zoom);
+  const imageHeight = Math.max(1, pageRect.height * zoom);
+
+  let previewImage = $("img", els.detailLoupeImage);
+  if (!previewImage) {
+    previewImage = document.createElement("img");
+    els.detailLoupeImage.append(previewImage);
+  }
+  if (previewImage.src !== image.url) previewImage.src = image.url;
+  previewImage.style.width = `${imageWidth}px`;
+  previewImage.style.height = `${imageHeight}px`;
+  previewImage.style.objectFit = "fill";
+  previewImage.style.left = `${84 - relativeX * imageWidth}px`;
+  previewImage.style.top = `${84 - relativeY * imageHeight}px`;
+
+  const loupeSize = 168;
+  const left = clamp(event.clientX - stageRect.left + 24, 8, stageRect.width - loupeSize - 8);
+  const top = clamp(event.clientY - stageRect.top + 24, 8, stageRect.height - loupeSize - 8);
+  els.detailLoupe.style.left = `${left}px`;
+  els.detailLoupe.style.top = `${top}px`;
+  els.detailLoupe.classList.add("visible");
+}
+
+function setCoverImage(kind, file) {
+  if (!file?.type.startsWith("image/")) {
+    showToast("请选择有效的 JPG、PNG 或 WEBP 图片");
+    return;
+  }
+  const isBack = kind === "back";
+  const current = isBack ? state.backCoverImage : state.coverImage;
+  if (current?.url) {
+    URL.revokeObjectURL(current.url);
+    imageCache.delete(current.url);
+  }
+  const image = {
+    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    name: file.name,
+    url: URL.createObjectURL(file),
+  };
+  if (isBack) state.backCoverImage = image;
+  else state.coverImage = image;
+  syncPageSlots();
+  state.modelRotation = { x: -8, y: -17 };
+  state.modelZoom = 1;
+  updateModelTransform();
+  renderPageList();
+  renderAssetStrip();
+  renderBook(false);
+  renderModel(false);
+  renderOverview();
+  showToast(isBack ? "封底图片已更新" : "封面图片已更新");
+}
+
+function removeCoverImage(kind) {
+  const key =
+    kind === "front" ? "coverImage" : kind === "back" ? "backCoverImage" : "wrapCoverImage";
+  const current = state[key];
+  if (!current) return;
+  URL.revokeObjectURL(current.url);
+  imageCache.delete(current.url);
+  state[key] = null;
+  syncPageSlots();
+  state.modelRotation = { x: -8, y: -17 };
+  state.modelZoom = 1;
+  updateModelTransform();
+  renderPageList();
+  renderAssetStrip();
+  renderBook(false);
+  renderModel(false);
+  renderOverview();
+  const label = kind === "front" ? "封面" : kind === "back" ? "封底" : "封面封底展开图";
+  showToast(`${label}已移除`);
+}
+
+function removeInteriorItem(itemId) {
+  const itemIndex = state.interiorItems.findIndex((item) => item.id === itemId);
+  if (itemIndex < 0) return;
+  const [item] = state.interiorItems.splice(itemIndex, 1);
+  URL.revokeObjectURL(item.image.url);
+  imageCache.delete(item.image.url);
+  state.images = state.images.filter((image) => image.id !== item.id);
+  if (!state.interiorItems.length) state.pages = 12;
+  syncPageSlots();
+  renderAll({ preserveSpread: true });
+  showToast(item.type === "panorama" ? "跨页大图已移除" : "内页图片已移除");
+}
+
+function setWrapCoverImage(file) {
+  if (!file?.type.startsWith("image/")) {
+    showToast("请选择有效的封面封底展开图");
+    return;
+  }
+  if (state.wrapCoverImage?.url) {
+    URL.revokeObjectURL(state.wrapCoverImage.url);
+    imageCache.delete(state.wrapCoverImage.url);
+  }
+  state.wrapCoverImage = {
+    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    name: file.name,
+    url: URL.createObjectURL(file),
+  };
+  syncPageSlots();
+  state.modelRotation = { x: -8, y: -17 };
+  state.modelZoom = 1;
+  updateModelTransform();
+  renderPageList();
+  renderAssetStrip();
+  renderBook(false);
+  renderModel(false);
+  renderOverview();
+  showToast("封面封底展开图已自动分配到封面与封底");
+}
+
+function setPanoramaImage(file) {
+  if (!file?.type.startsWith("image/")) {
+    showToast("请选择有效的 JPG、PNG 或 WEBP 图片");
+    return;
+  }
+  const image = {
+    id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    name: file.name,
+    url: URL.createObjectURL(file),
+  };
+  const item = { id: image.id, type: "panorama", image };
+  state.interiorItems.push(item);
+  syncPageSlots();
+  const location = state.itemLocations[item.id];
+  state.currentSpread = location?.spreadIndex ?? 0;
+  renderAll({ preserveSpread: true });
+  showToast(
+    location
+      ? `跨页大图已加入内页顺序：内页 ${String(location.startInner).padStart(
+          2,
+          "0"
+        )}–${String(location.endInner).padStart(2, "0")}`
+      : "跨页大图已加入内页顺序"
+  );
+}
+
+function addImages(files) {
+  const imageFiles = [...files].filter((file) => file.type.startsWith("image/"));
+  if (!imageFiles.length) {
+    showToast("请选择 JPG、PNG 或 WEBP 图片");
+    return;
+  }
+  const tasks = imageFiles.map(
+    (file) =>
+      new Promise((resolve) => {
+        const url = URL.createObjectURL(file);
+        const image = { id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`, name: file.name, url };
+        state.images.push(image);
+        state.interiorItems.push({ id: image.id, type: "page", image });
+        resolve(image);
+      })
+  );
+
+  Promise.all(tasks).then(() => {
+    syncPageSlots();
+    renderPageList();
+    renderAssetStrip();
+    renderBook(false);
+    renderModel(false);
+    renderOverview();
+    showToast(`已添加 ${imageFiles.length} 张内页图片，共 ${state.pages} 页`);
+  });
+}
+
+function addImagesFromClipboard(event) {
+  const files = [...(event.clipboardData?.files ?? [])].filter((file) => file.type.startsWith("image/"));
+  if (files.length) {
+    event.preventDefault();
+    addImages(files);
+  }
+}
+
+function bindPageDrag() {
+  let draggedIndex = null;
+  $$(".page-thumb", els.pageList).forEach((item) => {
+    item.addEventListener("click", (event) => {
+      const removeItemButton = event.target.closest("[data-remove-item]");
+      if (removeItemButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        removeInteriorItem(removeItemButton.dataset.removeItem);
+        return;
+      }
+      const removeCoverButton = event.target.closest("[data-remove-cover]");
+      if (removeCoverButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        removeCoverImage(removeCoverButton.dataset.removeCover);
+        return;
+      }
+      if (item.dataset.spreadIndex !== undefined) {
+        goToSpread(Number(item.dataset.spreadIndex));
+        return;
+      }
+      if (item.dataset.itemIndex !== undefined) {
+        const itemIndex = Number(item.dataset.itemIndex);
+        const contentItem = state.interiorItems[itemIndex];
+        const spread = state.itemLocations[contentItem?.id]?.spreadIndex;
+        if (Number.isFinite(spread)) goToSpread(spread);
+        return;
+      }
+      const page = Number(item.dataset.page);
+      const pageKind = item.dataset.pageKind;
+      const spread =
+        pageKind === "cover"
+          ? 0
+          : pageKind === "cover-reverse"
+            ? 1
+            : pageKind === "back-reverse"
+              ? spreadCount() - 2
+          : pageKind === "back"
+            ? spreadCount() - 1
+            : Math.floor((page - 1) / 2) + 1;
+      goToSpread(spread);
+    });
+    item.addEventListener("dragstart", (event) => {
+      if (item.dataset.itemIndex === undefined || event.target.closest("button")) {
+        event.preventDefault();
+        return;
+      }
+      draggedIndex = Number(item.dataset.itemIndex);
+      item.classList.add("dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(draggedIndex));
+    });
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
+      $$(".page-thumb", els.pageList).forEach((thumb) => thumb.classList.remove("drag-target"));
+    });
+    item.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      item.classList.add("drag-target");
+    });
+    item.addEventListener("dragleave", () => item.classList.remove("drag-target"));
+    item.addEventListener("drop", (event) => {
+      event.preventDefault();
+      item.classList.remove("drag-target");
+      const from = Number(event.dataTransfer.getData("text/plain") || draggedIndex);
+      const to = Number(item.dataset.itemIndex);
+      if (Number.isNaN(from) || Number.isNaN(to) || from === to) return;
+      const moved = state.interiorItems.splice(from, 1)[0];
+      state.interiorItems.splice(to, 0, moved);
+      syncPageSlots();
+      const location = state.itemLocations[moved.id];
+      if (location) state.currentSpread = location.spreadIndex;
+      renderAll({ preserveSpread: true });
+      showToast("内页与跨页大图顺序已更新");
+    });
+  });
+}
+
+function clearImages() {
+  [
+    ...state.images,
+    state.coverImage,
+    state.backCoverImage,
+    state.wrapCoverImage,
+    ...state.interiorItems.filter((item) => item.type === "panorama").map((item) => item.image),
+  ]
+    .filter(Boolean)
+    .forEach((image) => {
+      URL.revokeObjectURL(image.url);
+      imageCache.delete(image.url);
+    });
+  state.images = [];
+  state.interiorItems = [];
+  state.itemLocations = {};
+  state.pageImages = [];
+  state.pages = 12;
+  state.coverImage = null;
+  state.backCoverImage = null;
+  state.wrapCoverImage = null;
+  state.panoramas = {};
+  renderAll({ preserveSpread: true });
+  showToast("图片已清除");
+}
+
+function shufflePages() {
+  if (!state.interiorItems.length) {
+    showToast("请先上传图片");
+    return;
+  }
+  const shuffled = [...state.interiorItems];
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  state.interiorItems = shuffled;
+  syncPageSlots();
+  renderAll({ preserveSpread: true });
+  showToast("内页与跨页大图已重新排列");
+}
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  els.toastRegion.append(toast);
+  window.setTimeout(() => {
+    toast.classList.add("leaving");
+    window.setTimeout(() => toast.remove(), 280);
+  }, 2400);
+}
+
+function toggleTheme() {
+  const isDark = els.root.dataset.theme === "dark";
+  els.root.dataset.theme = isDark ? "light" : "dark";
+  localStorage.setItem("folio-theme", els.root.dataset.theme);
+}
+
+function resetAll() {
+  clearImages();
+  state.title = "未命名画册";
+  state.width = 210;
+  state.height = 280;
+  state.pages = 12;
+  state.currentSpread = 0;
+  state.zoom = 1;
+  state.preset = "custom";
+  state.fillPages = true;
+  state.texture = true;
+  state.margins = false;
+  state.marginValues = { top: 10, right: 10, bottom: 12, left: 12 };
+  state.bleed = 3;
+  state.guides = false;
+  state.binding = "left";
+  state.quality = "high";
+  state.modelRotation = { x: -8, y: -17 };
+  state.modelZoom = 1;
+  els.nameInput.value = state.title;
+  els.documentName.textContent = state.title;
+  els.widthInput.value = state.width;
+  els.heightInput.value = state.height;
+  els.pagesInput.value = state.pages;
+  els.coverToggle.checked = true;
+  els.textureToggle.checked = true;
+  els.marginsToggle.checked = false;
+  els.marginTopInput.value = "10";
+  els.marginRightInput.value = "10";
+  els.marginBottomInput.value = "12";
+  els.marginLeftInput.value = "12";
+  els.bleedInput.value = "3";
+  els.guidesButton.setAttribute("aria-pressed", "false");
+  $$(".binding-card").forEach((card) =>
+    card.classList.toggle("active", card.dataset.binding === "left")
+  );
+  $$(".quality-control button").forEach((button) =>
+    button.classList.toggle("active", button.dataset.quality === "high")
+  );
+  els.qualityHelp.textContent = "保留原图像素并以高质量采样显示，适合漫画与线稿。";
+  applyBindingButtonOrder();
+  setPreset("custom");
+  updateModelTransform();
+  renderAll();
+  showToast("已恢复默认设置");
+}
+
+function bindEvents() {
+  els.uploadButton.addEventListener("click", () => els.fileInput.click());
+  els.fileInput.addEventListener("change", (event) => {
+    addImages(event.target.files);
+    event.target.value = "";
+  });
+  els.coverUploadButton.addEventListener("click", () => els.coverInput.click());
+  els.backCoverUploadButton.addEventListener("click", () => els.backCoverInput.click());
+  els.wrapCoverUploadButton.addEventListener("click", () => els.wrapCoverInput.click());
+  els.spreadUploadButton.addEventListener("click", () => els.spreadInput.click());
+  els.coverInput.addEventListener("change", (event) => {
+    setCoverImage("front", event.target.files?.[0]);
+    event.target.value = "";
+  });
+  els.backCoverInput.addEventListener("change", (event) => {
+    setCoverImage("back", event.target.files?.[0]);
+    event.target.value = "";
+  });
+  els.wrapCoverInput.addEventListener("change", (event) => {
+    setWrapCoverImage(event.target.files?.[0]);
+    event.target.value = "";
+  });
+  els.removeCoverButton.addEventListener("click", () => removeCoverImage("front"));
+  els.removeBackCoverButton.addEventListener("click", () => removeCoverImage("back"));
+  els.removeWrapCoverButton.addEventListener("click", () => removeCoverImage("wrap"));
+  els.assetStrip.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-item]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    removeInteriorItem(button.dataset.removeItem);
+  });
+  els.spreadInput.addEventListener("change", (event) => {
+    setPanoramaImage(event.target.files?.[0]);
+    event.target.value = "";
+  });
+
+  els.nameInput.addEventListener("input", (event) => {
+    state.title = event.target.value.trim() || "未命名画册";
+    els.documentName.textContent = state.title;
+    renderBook(false);
+    renderModel(false);
+    updatePresentation();
+  });
+
+  $$(".preset-card").forEach((card) => {
+    card.addEventListener("click", () => setPreset(card.dataset.preset));
+  });
+  els.widthInput.addEventListener("input", (event) => {
+    setDimensions(event.target.value, state.height);
+    setPreset("custom");
+  });
+  els.heightInput.addEventListener("input", (event) => {
+    setDimensions(state.width, event.target.value);
+    setPreset("custom");
+  });
+  $("#swapOrientationButton").addEventListener("click", () => {
+    setDimensions(state.height, state.width);
+    setPreset("custom");
+  });
+
+  els.pagesInput.addEventListener("input", (event) => setPageCount(event.target.value));
+  $("#pagesMinusButton").addEventListener("click", () => setPageCount(state.pages - 2));
+  $("#pagesPlusButton").addEventListener("click", () => setPageCount(state.pages + 2));
+  $$(".binding-card").forEach((card) =>
+    card.addEventListener("click", () => setBinding(card.dataset.binding))
+  );
+  $$(".quality-control button").forEach((button) =>
+    button.addEventListener("click", () => setQuality(button.dataset.quality))
+  );
+
+  els.marginsToggle.addEventListener("change", (event) => {
+    state.margins = event.target.checked;
+    const panelScrollTop = $(".settings-scroll").scrollTop;
+    updateBookDecorations();
+    requestAnimationFrame(() => {
+      lockViewportScroll();
+      $(".settings-scroll").scrollTop = panelScrollTop;
+    });
+  });
+  [els.marginTopInput, els.marginRightInput, els.marginBottomInput, els.marginLeftInput, els.bleedInput].forEach(
+    (input) => input.addEventListener("input", updateReferenceLines)
+  );
+  els.coverToggle.addEventListener("change", (event) => {
+    state.fillPages = event.target.checked;
+    updateBookDecorations();
+    renderBook(false);
+    renderModel(false);
+  });
+  els.textureToggle.addEventListener("change", (event) => {
+    state.texture = event.target.checked;
+    updateBookDecorations();
+    renderModel(false);
+  });
+
+  els.guidesButton.addEventListener("click", () => {
+    state.guides = !state.guides;
+    els.guidesButton.setAttribute("aria-pressed", String(state.guides));
+    updateBookDecorations();
+  });
+  els.spreadButton.addEventListener("click", () => {
+    state.spreadMode = !state.spreadMode;
+    els.spreadButton.setAttribute("aria-pressed", String(state.spreadMode));
+    renderBook(false);
+    renderModel(false);
+    renderPageList();
+    updateBookDecorations();
+  });
+
+  $("#zoomInButton").addEventListener("click", () => setZoom((state.zoom === "fit" ? 1 : state.zoom) + 0.1));
+  $("#zoomOutButton").addEventListener("click", () => setZoom((state.zoom === "fit" ? 1 : state.zoom) - 0.1));
+  $("#fitButton").addEventListener("click", () => setZoom("fit"));
+  $("#zoomLabel").addEventListener("click", () => setZoom("fit"));
+  $("#fitWidthButton").addEventListener("click", () => setZoom("fit"));
+
+  els.nextButton.addEventListener("click", nextSpread);
+  els.prevButton.addEventListener("click", prevSpread);
+  els.nextZone.addEventListener("click", nextSpread);
+  els.prevZone.addEventListener("click", prevSpread);
+  els.viewerNextButton.addEventListener("click", nextSpread);
+  els.viewerPrevButton.addEventListener("click", prevSpread);
+  els.firstButton.addEventListener("click", () => goToSpread(0));
+  els.lastButton.addEventListener("click", () => goToSpread(spreadCount() - 1));
+
+  $$(".view-tab").forEach((tab) => tab.addEventListener("click", () => setView(tab.dataset.view)));
+  els.spreadGrid.addEventListener("click", (event) => {
+    const spread = event.target.closest(".overview-spread");
+    if (!spread) return;
+    state.currentSpread = Number(spread.dataset.spread);
+    setView("flip");
+    renderBook(false);
+    renderPageList();
+    updateBookDecorations();
+  });
+  els.spreadGrid.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    const spread = event.target.closest(".overview-spread");
+    if (!spread) return;
+    event.preventDefault();
+    spread.click();
+  });
+
+  let modelDrag = null;
+  els.modelStage.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("button")) return;
+    hideLoupe();
+    modelDrag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      rotationX: state.modelRotation.x,
+      rotationY: state.modelRotation.y,
+    };
+    els.modelStage.setPointerCapture(event.pointerId);
+    els.modelStage.classList.add("is-dragging");
+  });
+  els.modelStage.addEventListener("pointermove", (event) => {
+    if (!modelDrag || event.pointerId !== modelDrag.pointerId) return;
+    const deltaX = event.clientX - modelDrag.startX;
+    const deltaY = event.clientY - modelDrag.startY;
+    state.modelRotation.y = modelDrag.rotationY + deltaX * 0.32;
+    state.modelRotation.x = clamp(modelDrag.rotationX - deltaY * 0.24, -72, 72);
+    updateModelTransform();
+  });
+  const stopModelDrag = (event) => {
+    if (!modelDrag || event.pointerId !== modelDrag.pointerId) return;
+    modelDrag = null;
+    els.modelStage.classList.remove("is-dragging");
+  };
+  els.modelStage.addEventListener("pointerup", stopModelDrag);
+  els.modelStage.addEventListener("pointercancel", stopModelDrag);
+  els.modelStage.addEventListener(
+    "wheel",
+    (event) => {
+      if (state.view !== "model") return;
+      event.preventDefault();
+      const maxZoom = state.quality === "halftone" ? 3.2 : 2.4;
+      state.modelZoom = clamp(
+        state.modelZoom + (event.deltaY > 0 ? -0.07 : 0.07),
+        0.55,
+        maxZoom
+      );
+      updateModelTransform();
+    },
+    { passive: false }
+  );
+  els.modelResetButton.addEventListener("click", () => {
+    state.modelRotation = { x: -8, y: -17 };
+    state.modelZoom = 1;
+    updateModelTransform();
+    showToast("3D 视角已复位");
+  });
+  els.modelStage.addEventListener("dblclick", (event) => {
+    if (event.target.closest("button")) return;
+    state.modelRotation = { x: -8, y: -17 };
+    state.modelZoom = 1;
+    updateModelTransform();
+  });
+
+  $("#presentButton").addEventListener("click", enterPresentation);
+  $("#presentationClose").addEventListener("click", exitPresentation);
+  els.presentationPrev.addEventListener("click", () => {
+    if (state.currentSpread > 0) {
+      goToSpread(state.currentSpread - 1);
+      updatePresentationContent();
+    }
+  });
+  els.presentationNext.addEventListener("click", () => {
+    if (state.currentSpread < spreadCount() - 1) {
+      goToSpread(state.currentSpread + 1);
+      updatePresentationContent();
+    }
+  });
+
+  $("#shuffleButton").addEventListener("click", shufflePages);
+  $("#clearButton").addEventListener("click", clearImages);
+  $("#resetButton").addEventListener("click", resetAll);
+  $("#themeButton").addEventListener("click", toggleTheme);
+  $("#shortcutsButton").addEventListener("click", () => (els.shortcutModal.hidden = false));
+  $$("[data-close-modal]").forEach((node) => node.addEventListener("click", () => (els.shortcutModal.hidden = true)));
+
+  const dropTargets = [els.stage, document.body];
+  dropTargets.forEach((target) => {
+    target.addEventListener("dragover", (event) => {
+      if (!event.dataTransfer?.types.includes("Files")) return;
+      event.preventDefault();
+      els.dragOverlay.classList.add("visible");
+    });
+    target.addEventListener("dragleave", (event) => {
+      if (event.relatedTarget && target.contains(event.relatedTarget)) return;
+      els.dragOverlay.classList.remove("visible");
+    });
+    target.addEventListener("drop", (event) => {
+      if (!event.dataTransfer?.files.length) return;
+      event.preventDefault();
+      els.dragOverlay.classList.remove("visible");
+      addImages(event.dataTransfer.files);
+    });
+  });
+  document.addEventListener("paste", addImagesFromClipboard);
+  els.stage.addEventListener("pointermove", updateLoupe);
+  els.stage.addEventListener("pointerleave", hideLoupe);
+
+  window.addEventListener("resize", () => {
+    setBookDimensions();
+    setModelDimensions();
+    renderOverview();
+    if (state.presentation) applyPresentationBookSize();
+  });
+  window.addEventListener("scroll", lockViewportScroll, { passive: true });
+  document.addEventListener(
+    "focusin",
+    (event) => {
+      if (event.target.matches(".toggle-row input")) requestAnimationFrame(lockViewportScroll);
+    },
+    true
+  );
+
+  document.addEventListener("keydown", (event) => {
+    if (event.target.matches("input, textarea")) return;
+    if (event.key === "Escape") {
+      if (!els.presentationOverlay.hidden) exitPresentation();
+      els.shortcutModal.hidden = true;
+      return;
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      prevSpread();
+      updatePresentationContent();
+    }
+    if (event.key === "ArrowRight" || event.key === " ") {
+      event.preventDefault();
+      nextSpread();
+      updatePresentationContent();
+    }
+    if (event.key.toLowerCase() === "p") {
+      if (state.presentation) exitPresentation();
+      else enterPresentation();
+    }
+    if (event.key.toLowerCase() === "u") els.fileInput.click();
+    if (event.key === "0") setZoom("fit");
+  });
+}
+
+function bootstrap() {
+  try {
+    const savedTheme = localStorage.getItem("folio-theme");
+    if (savedTheme) els.root.dataset.theme = savedTheme;
+  } catch {
+    // Local storage may be unavailable in a strict privacy mode.
+  }
+  bindEvents();
+  applyBindingButtonOrder();
+  renderAll();
+  lockViewportScroll();
+}
+
+bootstrap();
+
+</script>
   </body>
 </html>
