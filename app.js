@@ -67,6 +67,9 @@ const els = {
   coverPreview: $("#coverPreview"),
   backCoverPreview: $("#backCoverPreview"),
   wrapCoverPreview: $("#wrapCoverPreview"),
+  removeCoverButton: $("#removeCoverButton"),
+  removeBackCoverButton: $("#removeBackCoverButton"),
+  removeWrapCoverButton: $("#removeWrapCoverButton"),
   nameInput: $("#nameInput"),
   documentName: $("#documentName"),
   widthInput: $("#widthInput"),
@@ -1041,6 +1044,11 @@ function buildPageList() {
         <span>${coverImage ? "COVER IMAGE" : "GENERATED"}</span>
       </div>
       <span class="thumb-number">1</span>
+      ${
+        state.coverImage
+          ? '<button class="asset-remove page-remove" type="button" data-remove-cover="front" aria-label="移除封面图片">×</button>'
+          : ""
+      }
     </div>
   `);
 
@@ -1062,6 +1070,7 @@ function buildPageList() {
               ).padStart(2, "0")}</span>
             </div>
             <span class="thumb-drag" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+            <button class="asset-remove page-remove" type="button" data-remove-item="${item.id}" aria-label="移除跨页大图">×</button>
           </div>
         `);
         return;
@@ -1078,6 +1087,7 @@ function buildPageList() {
           </div>
           <span class="thumb-number">${location.startInner ?? "–"}</span>
           <span class="thumb-drag" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>
+          <button class="asset-remove page-remove" type="button" data-remove-item="${item.id}" aria-label="移除内页图片">×</button>
         </div>
       `);
     });
@@ -1107,6 +1117,11 @@ function buildPageList() {
         <span>${backCoverImage ? "BACK COVER" : "GENERATED"}</span>
       </div>
       <span class="thumb-number">${state.pages}</span>
+      ${
+        state.backCoverImage
+          ? '<button class="asset-remove page-remove" type="button" data-remove-cover="back" aria-label="移除封底图片">×</button>'
+          : ""
+      }
     </div>
   `);
   return list.join("");
@@ -1123,7 +1138,16 @@ function renderAssetStrip() {
     els.assetStrip.innerHTML = '<p class="asset-empty">上传后，图片会出现在这里</p>';
   } else {
     els.assetStrip.innerHTML = state.images
-      .map((image, index) => `<img src="${image.url}" alt="素材 ${index + 1}" title="${escapeHtml(image.name)}" />`)
+      .map(
+        (image, index) => `
+          <span class="asset-thumb" title="${escapeHtml(image.name)}">
+            <img src="${escapeHtml(image.url)}" alt="素材 ${index + 1}" />
+            <button class="asset-remove" type="button" data-remove-item="${image.id}" aria-label="移除${escapeHtml(
+              image.name
+            )}">×</button>
+          </span>
+        `
+      )
       .join("");
   }
   const panoramaCount = state.interiorItems.filter((item) => item.type === "panorama").length;
@@ -1137,6 +1161,9 @@ function renderAssetStrip() {
   els.coverPreview.innerHTML = previewMarkup(state.coverImage);
   els.backCoverPreview.innerHTML = previewMarkup(state.backCoverImage);
   els.wrapCoverPreview.innerHTML = previewMarkup(state.wrapCoverImage);
+  els.removeCoverButton.hidden = !state.coverImage;
+  els.removeBackCoverButton.hidden = !state.backCoverImage;
+  els.removeWrapCoverButton.hidden = !state.wrapCoverImage;
   els.fileStatus.textContent = state.interiorItems.length
     ? `${state.images.length} 张内页${panoramaCount ? ` + ${panoramaCount} 张跨页大图` : ""} · 仅保存在本地`
     : "所有内容仅保存在本地";
@@ -1542,6 +1569,40 @@ function setCoverImage(kind, file) {
   showToast(isBack ? "封底图片已更新" : "封面图片已更新");
 }
 
+function removeCoverImage(kind) {
+  const key =
+    kind === "front" ? "coverImage" : kind === "back" ? "backCoverImage" : "wrapCoverImage";
+  const current = state[key];
+  if (!current) return;
+  URL.revokeObjectURL(current.url);
+  imageCache.delete(current.url);
+  state[key] = null;
+  syncPageSlots();
+  state.modelRotation = { x: -8, y: -17 };
+  state.modelZoom = 1;
+  updateModelTransform();
+  renderPageList();
+  renderAssetStrip();
+  renderBook(false);
+  renderModel(false);
+  renderOverview();
+  const label = kind === "front" ? "封面" : kind === "back" ? "封底" : "封面封底展开图";
+  showToast(`${label}已移除`);
+}
+
+function removeInteriorItem(itemId) {
+  const itemIndex = state.interiorItems.findIndex((item) => item.id === itemId);
+  if (itemIndex < 0) return;
+  const [item] = state.interiorItems.splice(itemIndex, 1);
+  URL.revokeObjectURL(item.image.url);
+  imageCache.delete(item.image.url);
+  state.images = state.images.filter((image) => image.id !== item.id);
+  if (!state.interiorItems.length) state.pages = 12;
+  syncPageSlots();
+  renderAll({ preserveSpread: true });
+  showToast(item.type === "panorama" ? "跨页大图已移除" : "内页图片已移除");
+}
+
 function setWrapCoverImage(file) {
   if (!file?.type.startsWith("image/")) {
     showToast("请选择有效的封面封底展开图");
@@ -1633,7 +1694,21 @@ function addImagesFromClipboard(event) {
 function bindPageDrag() {
   let draggedIndex = null;
   $$(".page-thumb", els.pageList).forEach((item) => {
-    item.addEventListener("click", () => {
+    item.addEventListener("click", (event) => {
+      const removeItemButton = event.target.closest("[data-remove-item]");
+      if (removeItemButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        removeInteriorItem(removeItemButton.dataset.removeItem);
+        return;
+      }
+      const removeCoverButton = event.target.closest("[data-remove-cover]");
+      if (removeCoverButton) {
+        event.preventDefault();
+        event.stopPropagation();
+        removeCoverImage(removeCoverButton.dataset.removeCover);
+        return;
+      }
       if (item.dataset.spreadIndex !== undefined) {
         goToSpread(Number(item.dataset.spreadIndex));
         return;
@@ -1660,7 +1735,7 @@ function bindPageDrag() {
       goToSpread(spread);
     });
     item.addEventListener("dragstart", (event) => {
-      if (item.dataset.itemIndex === undefined) {
+      if (item.dataset.itemIndex === undefined || event.target.closest("button")) {
         event.preventDefault();
         return;
       }
@@ -1822,6 +1897,16 @@ function bindEvents() {
   els.wrapCoverInput.addEventListener("change", (event) => {
     setWrapCoverImage(event.target.files?.[0]);
     event.target.value = "";
+  });
+  els.removeCoverButton.addEventListener("click", () => removeCoverImage("front"));
+  els.removeBackCoverButton.addEventListener("click", () => removeCoverImage("back"));
+  els.removeWrapCoverButton.addEventListener("click", () => removeCoverImage("wrap"));
+  els.assetStrip.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-item]");
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    removeInteriorItem(button.dataset.removeItem);
   });
   els.spreadInput.addEventListener("change", (event) => {
     setPanoramaImage(event.target.files?.[0]);

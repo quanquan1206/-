@@ -78,39 +78,48 @@
               <p class="asset-empty">上传后，图片会出现在这里</p>
             </div>
             <div class="cover-slot-grid">
-              <button class="cover-slot" id="coverUploadButton" type="button">
-                <span class="cover-slot-preview" id="coverPreview">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path>
-                  </svg>
-                </span>
-                <span>
-                  <strong>封面</strong>
-                  <small>独立图片</small>
-                </span>
-              </button>
-              <button class="cover-slot" id="backCoverUploadButton" type="button">
-                <span class="cover-slot-preview" id="backCoverPreview">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path>
-                  </svg>
-                </span>
-                <span>
-                  <strong>封底</strong>
-                  <small>独立图片</small>
-                </span>
-              </button>
-              <button class="wrap-cover-slot" id="wrapCoverUploadButton" type="button">
-                <span class="cover-slot-preview" id="wrapCoverPreview">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M3 6h8v12H3zM13 6h8v12h-8zM11 9l2 3-2 3"></path>
-                  </svg>
-                </span>
-                <span>
-                  <strong>封面封底展开图</strong>
-                  <small>按左右开本自动拆分；单独上传的封面或封底优先</small>
-                </span>
-              </button>
+              <div class="cover-slot-shell">
+                <button class="cover-slot" id="coverUploadButton" type="button">
+                  <span class="cover-slot-preview" id="coverPreview">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path>
+                    </svg>
+                  </span>
+                  <span>
+                    <strong>封面</strong>
+                    <small>独立图片</small>
+                  </span>
+                </button>
+                <button class="asset-remove" id="removeCoverButton" type="button" aria-label="移除封面图片" hidden>×</button>
+              </div>
+              <div class="cover-slot-shell">
+                <button class="cover-slot" id="backCoverUploadButton" type="button">
+                  <span class="cover-slot-preview" id="backCoverPreview">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path>
+                    </svg>
+                  </span>
+                  <span>
+                    <strong>封底</strong>
+                    <small>独立图片</small>
+                  </span>
+                </button>
+                <button class="asset-remove" id="removeBackCoverButton" type="button" aria-label="移除封底图片" hidden>×</button>
+              </div>
+              <div class="cover-slot-shell wrap-cover-slot-shell">
+                <button class="wrap-cover-slot" id="wrapCoverUploadButton" type="button">
+                  <span class="cover-slot-preview" id="wrapCoverPreview">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M3 6h8v12H3zM13 6h8v12h-8zM11 9l2 3-2 3"></path>
+                    </svg>
+                  </span>
+                  <span>
+                    <strong>封面封底展开图</strong>
+                    <small>按左右开本自动拆分；单独上传的封面或封底优先</small>
+                  </span>
+                </button>
+                <button class="asset-remove" id="removeWrapCoverButton" type="button" aria-label="移除封面封底展开图" hidden>×</button>
+              </div>
             </div>
             <button class="spread-upload-button" id="spreadUploadButton" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true">
